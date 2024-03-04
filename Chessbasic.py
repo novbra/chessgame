@@ -114,7 +114,7 @@ class GameState():
         if self.IswTomove:
             if self.board[row-1][column] == "--":  #前一格是否为空
                 moves.append(Move((row, column), (row-1, column), self.board))  #前移一格
-                if row == 6 and self.board[row - 1][column] == "--":  # 前2格是否为空且在第六行
+                if row == 6 and self.board[row - 2][column] == "--":  # 前2格是否为空且在第六行
                     moves.append(Move((row, column), (row - 2, column), self.board))  #前移俩格
             if column-1 >= 0: #不检测-1列
                 if self.board[row-1][column-1][0] =="b":
@@ -162,7 +162,7 @@ class GameState():
             endCol = column + m[1]
             if 0 <= endRow < 8 and 0 <= endCol < 8:  # 在棋盘上
                 endPiece = self.board[endRow][endCol]
-                if endPiece != allyColor:
+                if endPiece[0] != allyColor:
                     moves.append(Move((row, column), (endRow, endCol), self.board))
     def getBishopMoves(self, row, column, moves):#主教
         directions = ((-1, -1), (-1, 1), (1, -1), (1, 1))
