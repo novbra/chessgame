@@ -22,6 +22,11 @@ class GameState():
         self.blackKingLocation = (0, 4)
         self.checkMate = False #被将的状态
         self.staleMate = False #僵局的状态
+        self.enpassantPossible=()
+        self.currentCastlingRight =CastleRights(True,True,True,True)
+        self.castleRightsLog = [CastleRights(self.currentCastlingRight.wks,self.currentCastlingRight.bks,
+                                             self.currentCastlingRight.wqs,self.currentCastlingRight.bqs)]
+
 
 
 #移动棋子
@@ -34,9 +39,36 @@ class GameState():
             self.whiteKingLocation = (move.endrow, move.endcolumn)
         elif move.moveID =="bk":
             self.blackKingLocation = (move.endrow, move.endcolumn)#更新双王位置
+        #pawn promotion小兵晋升
+        if move.isPawnPromotion:
+            self.board[move.endrow][move.endcolumn] = move.piecestart[0]+'Q'
+
+        #enpassant move
+        if move.isEnpassantMove:
+            self.board[move.startrow][move.endcolumn]='--'
+        #update enpassantPossible variable
+        if move.piecestart[1]=='p' and abs(move.startrow-move.endrow)==2:
+            self.enpassantPossible=((move.startrow+move.endrow)//2,move.startcolumn)
+        else:
+            self.enpassantPossible=()
+
+        #castle move
+        if move.isCastleMove:
+            if move.endcolumn-move.startcolumn==2:
+                self.board[move.endrow][move.endcolumn-1]=self.board[move.endrow][move.endcolumn+1]#moves the rook
+                self.board[move.endrow][move.endcolumn + 1]='--'#erase old rook
+
+            else:
+                self.board[move.endrow][move.endcolumn + 1]=self.board[move.endrow][move.endcolumn-2]#moves the rook
+                self.board[move.endrow][move.endcolumn -2] = '--'
+
+        #update cateling rights
+        self.updateCastleRights(move)
+        self.castleRightsLog.append(CastleRights(self.currentCastlingRight.wks, self.currentCastlingRight.bks,
+                                             self.currentCastlingRight.wqs, self.currentCastlingRight.bqs))
 
 
-#撤回一步
+    #撤回一步
     def Pieceundo(self):
         if len(self.movelog) != 0:  #只要日志里有记录
             move = self.movelog.pop()   #弹出最后一个记录并赋给move
@@ -47,16 +79,65 @@ class GameState():
                 self.whiteKingLocation = (move.startrow, move.startcolumn)
             elif move.moveID == "bk":
                 self.blackKingLocation = (move.startrow, move.startcolumn)  # 更新双王位置
+            if move.isEnpassantMove:
+                self.board[move.endrow][move.endcolumn] = '--'
+                self.board[move.startrow][move.endcolumn] = move.pieceend
+                self.enpassantPossible=(move.endrow,move.endcolumn)
+            #undo a 2 square pawn advance
+            if move.piecestart[1]=='p' and abs(move.startrow-move.endrow) ==2:
+                self.enpassantPossible=()
+            #undo castling rights
+            self.castleRightsLog.pop()
+            self.currentCastlingRight= self.castleRightsLog[-1]#set the current castle rights to the last one in the list
+            #undo castle move
+            if move.isCastleMove:
+                if move.endcolumn-move.startcolumn==2:
+                    self.board[move.endrow][move.endcolumn+1]=self.board[move.endrow][move.endcolumn-1]
+                    self.board[move.endrow][move.endcolumn-1]='--'
+                else:
+                    self.board[move.endrow][move.endcolumn -2] = self.board[move.endrow][move.endcolumn + 1]
+                    self.board[move.endrow][move.endcolumn + 1] = '--'
+
+    '''
+    update the castle rights given the move
+    '''
+    def  updateCastleRights(self,move):
+        if move.piecestart =='wk':
+            self.currentCastlingRight.wks=False
+            self.currentCastlingRight.wqs = False
+        elif move.piecestart=='bk':
+            self.currentCastlingRight.bks = False
+            self.currentCastlingRight.bqs = False
+        elif move.piecestart=='wr':
+            if move.startrow==7:
+                if move.startcolumn==0:#left rook
+                    self.currentCastlingRight.wqs=False
+                elif move.startcolumn==7:#right rook
+                    self.currentCastlingRight.wks=False
+        elif move.piecestart=='br':
+            if move.startrow==0:
+                if move.startcolumn==0:#left rook
+                    self.currentCastlingRight.bqs=False
+                elif move.startcolumn==7:#right rook
+                    self.currentCastlingRight.bks=False
+
 
 # 获取合法移动集合
     def Getvalidmove(self):
+        tempEnpassantPossible = self.enpassantPossible
+        tempCastleRights=CastleRights(self.currentCastlingRight.wks,self.currentCastlingRight.bks,
+                                      self.currentCastlingRight.wqs,self.currentCastlingRight.bqs)#copy the current castling rights
         moves = self.Get_all_possible_moves()#生成所有可能的步
+        if self.IswTomove:
+            self.getCastleMoves(self.whiteKingLocation[0],self.whiteKingLocation[1],moves)
+        else:
+            self.getCastleMoves(self.blackKingLocation[0],self.blackKingLocation[1],moves)
         for i in range(len(moves)-1, -1, -1):#倒序
             self.Piecemove(moves[i])
             self.IswTomove = not self.IswTomove
             #所有敌方可能的步及其是否会吃王由inChek（）实现
             if self.inCheck():
-                moves.remove(self.moves[i])
+                moves.remove(moves[i])
             self.IswTomove = not self.IswTomove
             self.Pieceundo()
         if len(moves) == 0: #检测被将的两种状态
@@ -64,10 +145,8 @@ class GameState():
                 self.checkMate = True
             else:
                 self.staleMate = True
-        else:
-            self.staleMate = False
-            self.checkMate = False
-
+        self.enpassantPossible = tempEnpassantPossible
+        self.currentCastlingRight=tempCastleRights
         return moves
     #是否被将
     def inCheck(self):
@@ -119,10 +198,13 @@ class GameState():
             if column-1 >= 0: #不检测-1列
                 if self.board[row-1][column-1][0] =="b":
                     moves.append(Move((row, column), (row - 1, column-1), self.board))  #吃左上
+                elif (row-1,column-1)==self.enpassantPossible:
+                    moves.append(Move((row,column),(row-1,column-1),self.board,isEnpassantMove=True))
             if column+1 <= 7: #不检测9列
                 if self.board[row-1][column+1][0] =="b":
                     moves.append(Move((row, column), (row - 1, column+1), self.board))#吃右上
-
+                elif (row - 1, column + 1) == self.enpassantPossible:
+                    moves.append(Move((row, column), (row - 1, column + 1), self.board, isEnpassantMove=True))
         else:
             if self.board[row+1][column] == "--":  #前一格是否为空
                 moves.append(Move((row, column), (row+1, column), self.board))  #前移一格
@@ -131,10 +213,13 @@ class GameState():
             if column-1 >= 0:  #不检测-1列
                 if self.board[row+1][column-1][0] == "w":
                     moves.append(Move((row, column), (row + 1, column-1), self.board))#吃左下
+                elif (row + 1, column - 1) == self.enpassantPossible:
+                    moves.append(Move((row, column), (row + 1, column - 1), self.board, isEnpassantMove=True))
             if column+1 <= 7:  #不检测9列
                 if self.board[row+1][column+1][0] == "w":
                     moves.append(Move((row, column), (row + 1, column+1), self.board))#吃右下
-
+                elif (row + 1, column + 1) == self.enpassantPossible:
+                    moves.append(Move((row, column), (row + 1, column + 1), self.board, isEnpassantMove=True))
 
     #车
     def getRookMoves(self, row, column, moves):
@@ -195,13 +280,30 @@ class GameState():
                     moves.append(Move((row, column), (endRow, endCol), self.board))
 
 
+    def getCastleMoves(self,row,column,moves):
+        if self.squarelUnderAttack(row,column):
+            return
+        if (self.IswTomove and self.currentCastlingRight.wks) or (not self.IswTomove and self.currentCastlingRight.bks):
+            self.getKingsideCastleMoves(row,column,moves)
+        if (self.IswTomove and self.currentCastlingRight.wqs)or (not self.IswTomove and self.currentCastlingRight.bqs):
+            self.getQueensideCastleMoves(row, column, moves)
 
+    def getKingsideCastleMoves(self, row, column, moves):
+        if self.board[row][column+1]=='--' and self.board[row][column+2]=='--':
+            if not self.squarelUnderAttack(row,column+1) and not self.squarelUnderAttack(row,column+2):
+                moves.append(Move((row,column),(row,column+2),self.board,isCastleMove=True))
 
+    def getQueensideCastleMoves(self, row, column, moves):
+        if self.board[row][column - 1] == '--' and self.board[row][column - 2] == '--'and self.board[row][column-3]:
+            if not self.squarelUnderAttack(row, column - 1) and not self.squarelUnderAttack(row, column - 2):
+                moves.append(Move((row, column), (row, column - 2), self.board, isCastleMove=True))
 
-
-
-
-
+class CastleRights():
+    def __init__(self,wks,bks,wqs,bqs):
+        self.wks=wks
+        self.bks=bks
+        self.wqs = wqs
+        self.bqs = bqs
 
 
 
@@ -215,7 +317,7 @@ class Move():
                    "e": 4, "f": 5, "g": 6, "h": 7}
     colsToFiles = {v: k for k, v in filesTocols.items()}
 
-    def __init__(self, start, end, board):
+    def __init__(self, start, end, board,isEnpassantMove =False,isCastleMove =False):
         #  记录开始位置和最终位置
         self.startrow = start[0]
         self.startcolumn = start[1]
@@ -223,6 +325,15 @@ class Move():
         self.endcolumn = end[1]
         self.piecestart = board[self.startrow][self.startcolumn]    #  记录棋子起始位置
         self.pieceend = board[self.endrow][self.endcolumn]         #  记录棋子最终位置
+        #PawnPromotion
+        self.isPawnPromotion= (self.piecestart =='wp'and self.endrow ==0) or (self.piecestart=='bp'and self.endrow ==7)
+        #Enpassant
+        self.isEnpassantMove = isEnpassantMove
+        if self.isEnpassantMove:
+            self.pieceend='wp'if self.piecestart=='bp'else 'bp'
+        #castle move
+        self.isCastleMove=isCastleMove
+
         self.moveID = self.startrow*1000+self.startcolumn*100+self.endrow*10+self.endcolumn  # 给每次移动建立一个唯一ID
         # print(self.moveID)
 

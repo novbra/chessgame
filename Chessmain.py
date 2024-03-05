@@ -57,12 +57,13 @@ def main():
                 if len(clicked) == 2 : # 当clicked中存在两个不同的位置时，即将发生棋子的移动
                     move = Chessbasic.Move(clicked[0], clicked[1], gamestate.board)
                     print(move.getChess())
-                    if move in validmoves:  #  如果该位置属于合法落子位置集合
-                        gamestate.Piecemove(move)  #  移动棋子
-                        movemade = True     #  表示发生了移动
-                        selected = ()  # 移动完棋子，清空记录
-                        clicked = []
-                    else:
+                    for i in range(len(validmoves)):
+                        if move == validmoves[i]:  #  如果该位置属于合法落子位置集合
+                            gamestate.Piecemove(validmoves[i])  #  移动棋子
+                            movemade = True     #  表示发生了移动
+                            selected = ()  # 移动完棋子，清空记录
+                            clicked = []
+                    if not movemade:
                         clicked =[selected]  #把当前的点击次数设置为选择当前方块
 
 
@@ -77,16 +78,39 @@ def main():
             validmoves = gamestate.Getvalidmove()
             movemade = False
 
-        Drawgame(screen, gamestate)
+        Drawgame(screen, gamestate,validmoves,selected)
+
         pygame.display.flip()
 
+'''
+highlight square selected and move for piece selected
+'''
+def highlightSquares(screen,gamestate,validmoves,sqSelected):
+    if sqSelected!=():
+        row,column=sqSelected
+        if gamestate.board[row][column][0]==('w'if gamestate.IswTomove else 'b'):#sqSelected is a piece that can be moved
+            #highlight selected square
+            s=pygame.Surface((PieceSIZE,PieceSIZE))
+            s.set_alpha(100)
+            s.fill(pygame.Color('yellow'))
+            screen.blit(s,(column * PieceSIZE, row * PieceSIZE))
+            #highlight moves from that square
+            s.fill(pygame.Color('green'))
+            for move in validmoves:
+                if move.startrow==row and move.startcolumn==column:
+                    screen.blit(s,(move.endcolumn*PieceSIZE,move.endrow*PieceSIZE))
+
+
+
 # 绘制游戏
-def Drawgame(screen, gamestate):
+def Drawgame(screen, gamestate,validmoves,sqSelected):
     Drawboard(screen)
+    highlightSquares(screen,gamestate,validmoves,sqSelected)
     Drawpieces(screen, gamestate.board)
 
 # 绘制棋盘
 def Drawboard(screen):
+    global colors
     colors = [pygame.Color("white"), pygame.Color("gray")]
     for row in range(8):
         for column in range(8):
@@ -100,7 +124,28 @@ def Drawpieces(screen, board):
             if piece != "--":
                 screen.blit(img[piece], pygame.Rect(column * PieceSIZE, row * PieceSIZE, PieceSIZE, PieceSIZE))
 
+'''
+animating a move
+'''
+def animateMove(move,screen,board,clock):
+    global colors
 
+    dr=move.endrow-move.startrow
+    dc=move.endcolumn-move.startcolumn
+    framesPerSquare=10#frames to move one square
+    framesCount=(abs(dr)+abs(dc))*framesPerSquare
+    for frame in range(framesCount+1):
+        row,column=(move.startrow+dr*frame/framesCount,move.startcolumn+dc*frame/framesCount)
+        Drawboard(screen)
+        Drawpieces(screen,board)
+        color=colors[(move.endrow+move.endcolumn)%2]
+        endSquare =pygame.Rect(move.endcolumn*PieceSIZE,move.endrow*PieceSIZE,PieceSIZE,PieceSIZE)
+        pygame.draw.rect(screen,color,endSquare)
+        if move.pieceend!='--':
+            screen.blit(img[move.pieceend],endSquare)
+        screen.blit(img[move.piecestart],pygame.Rect(column*PieceSIZE,row*PieceSIZE,PieceSIZE,PieceSIZE))
+        pygame.display.flip()
+        clock.tick(60)
 
 
 
