@@ -236,6 +236,8 @@ class GameState():
                     elif endPiece[0] == enemyColor:
                         moves.append(Move((row, column), (endRow, endCol), self.board))
                         break
+                    else:
+                        break
                 else:
                     break
 
@@ -262,6 +264,8 @@ class GameState():
                         moves.append(Move((row, column), (endRow, endCol), self.board))
                     elif endPiece[0] == enemyColor:
                         moves.append(Move((row, column), (endRow, endCol), self.board))
+                        break
+                    else:
                         break
                 else:
                     break

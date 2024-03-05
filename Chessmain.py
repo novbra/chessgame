@@ -16,7 +16,7 @@ pygame.init()
 def Loadimages():
     pieces = ["wr", "wn", "wb", "wq", "wk", "bb", "bn", "br", "bp", "wp", "bk", "bq"]
     for piece in pieces:
-        img[piece] = pygame.transform.scale(pygame.image.load("chessgame/image/" + piece + ".png"),(PieceSIZE,PieceSIZE))
+        img[piece] = pygame.transform.scale(pygame.image.load("image/" + piece + ".png"),(PieceSIZE,PieceSIZE))
 
 # 游戏初始化
 def main():
