@@ -41,7 +41,7 @@ class GameState():
             self.blackKingLocation = (move.endrow, move.endcolumn)#更新双王位置
         #pawn promotion小兵晋升
         if move.isPawnPromotion:
-            self.board[move.endrow][move.endcolumn] = move.piecestart[0]+'Q'
+            self.board[move.endrow][move.endcolumn] = move.piecestart[0]+'q'
 
         #enpassant move
         if move.isEnpassantMove:

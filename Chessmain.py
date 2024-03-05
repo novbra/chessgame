@@ -16,12 +16,12 @@ pygame.init()
 def Loadimages():
     pieces = ["wr", "wn", "wb", "wq", "wk", "bb", "bn", "br", "bp", "wp", "bk", "bq"]
     for piece in pieces:
-        img[piece] = pygame.transform.scale(pygame.image.load("image/" + piece + ".png"),(PieceSIZE,PieceSIZE))
+        img[piece] = pygame.transform.scale(pygame.image.load("chessgame/image/" + piece + ".png"),(PieceSIZE,PieceSIZE))
 
 # 游戏初始化
 def main():
     # 创建窗口
-    screen = pygame.display.set_mode((HEIGHT, WIDTH))
+    screen = pygame.display.set_mode((WIDTH,HEIGHT ))
     # 设置标题
     pygame.display.set_caption('AI Chess')
     # 加载图片
@@ -39,6 +39,7 @@ def main():
     # 游戏主循环
     while running:
         for event in pygame.event.get():
+            
             if event.type == pygame.QUIT:
                 running = False
             #  鼠标点击事件
@@ -59,6 +60,7 @@ def main():
                     print(move.getChess())
                     for i in range(len(validmoves)):
                         if move == validmoves[i]:  #  如果该位置属于合法落子位置集合
+                            animateMove(validmoves[i], screen, gamestate.board, clock) #移动轨迹
                             gamestate.Piecemove(validmoves[i])  #  移动棋子
                             movemade = True     #  表示发生了移动
                             selected = ()  # 移动完棋子，清空记录
@@ -74,9 +76,11 @@ def main():
                     gamestate.Pieceundo()
                     movemade = True
 
+
         if movemade : #  如果移动发生了，重新获得可落子位置
             validmoves = gamestate.Getvalidmove()
             movemade = False
+
 
         Drawgame(screen, gamestate,validmoves,selected)
 
@@ -127,25 +131,35 @@ def Drawpieces(screen, board):
 '''
 animating a move
 '''
-def animateMove(move,screen,board,clock):
+
+def animateMove(move, screen, board, clock):
     global colors
 
-    dr=move.endrow-move.startrow
-    dc=move.endcolumn-move.startcolumn
-    framesPerSquare=10#frames to move one square
-    framesCount=(abs(dr)+abs(dc))*framesPerSquare
-    for frame in range(framesCount+1):
-        row,column=(move.startrow+dr*frame/framesCount,move.startcolumn+dc*frame/framesCount)
+    dr = move.endrow - move.startrow
+    dc = move.endcolumn - move.startcolumn
+
+    framesPerSquare = 10  # 移动一个格子所需的帧数，调整framesPerSquare的值以控制动画的速度。
+
+    framesCount = (abs(dr) + abs(dc)) * framesPerSquare
+    for frame in range(framesCount + 1):
+        row = move.startrow + dr * frame / framesCount
+        col = move.startcolumn + dc * frame / framesCount
+
+        # 在中间位置绘制棋盘和棋子
         Drawboard(screen)
-        Drawpieces(screen,board)
-        color=colors[(move.endrow+move.endcolumn)%2]
-        endSquare =pygame.Rect(move.endcolumn*PieceSIZE,move.endrow*PieceSIZE,PieceSIZE,PieceSIZE)
-        pygame.draw.rect(screen,color,endSquare)
-        if move.pieceend!='--':
-            screen.blit(img[move.pieceend],endSquare)
-        screen.blit(img[move.piecestart],pygame.Rect(column*PieceSIZE,row*PieceSIZE,PieceSIZE,PieceSIZE))
+        Drawpieces(screen, board)
+        color = colors[(move.endrow + move.endcolumn) % 2]
+        endSquare = pygame.Rect(move.endcolumn * PieceSIZE, move.endrow * PieceSIZE, PieceSIZE, PieceSIZE)
+        pygame.draw.rect(screen, color, endSquare)
+        if move.pieceend != '--':
+            screen.blit(img[move.pieceend], endSquare)
+
+        # 在中间位置绘制移动中的棋子
+        screen.blit(img[move.piecestart], pygame.Rect(col * PieceSIZE, row * PieceSIZE, PieceSIZE, PieceSIZE))
+
         pygame.display.flip()
         clock.tick(60)
+
 
 
 
