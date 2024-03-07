@@ -2,7 +2,7 @@
 主界面，处理输入以及显示当前游戏状态
 """
 import pygame
-import Chessbasic
+import Chessbasic, AI
 
 # 全局变量
 HEIGHT = 960
@@ -34,39 +34,45 @@ def main():
     movemade = False # 判断是否发生合法移动
     selected = ()  # 存储被选中的方块（row，col）
     clicked = []  # 存储用户点击的方块[(4,2),(5,3)]
+    player1 = False # 如果是人类在操作白棋，则其值为True
+    player2 = False # 如果是人类在操作黑棋，则其值为True
+    gameover = False
+
     running = True
 
     # 游戏主循环
     while running:
+        humanturn = (gamestate.IswTomove and player1) or (not gamestate.IswTomove and player2)# 是否是人类的回合
         for event in pygame.event.get():
             
             if event.type == pygame.QUIT:
                 running = False
             #  鼠标点击事件
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                location = pygame.mouse.get_pos()  # 捕获鼠标点击位置
-                row = location[1]//PieceSIZE  # 位置整除8，获得点击的是第几块的数据
-                column = location[0]//PieceSIZE
+                if not gameover and humanturn:
+                    location = pygame.mouse.get_pos()  # 捕获鼠标点击位置
+                    row = location[1]//PieceSIZE  # 位置整除8，获得点击的是第几块的数据
+                    column = location[0]//PieceSIZE
 
-                # selected代表当前用户点击的方块的位置，clicked代表历史点击的方块的位置的的集合
-                if selected == (row, column):  # 点击了相同的方块
-                    selected = ()  # 清空（取消）
-                    clicked = []
-                else:
-                    selected = (row, column)  # 点击了不同的方块，将方块的数据存入clicked中
-                    clicked.append(selected)
-                if len(clicked) == 2 : # 当clicked中存在两个不同的位置时，即将发生棋子的移动
-                    move = Chessbasic.Move(clicked[0], clicked[1], gamestate.board)
-                    print(move.getChess())
-                    for i in range(len(validmoves)):
-                        if move == validmoves[i]:  #  如果该位置属于合法落子位置集合
-                            animateMove(validmoves[i], screen, gamestate.board, clock) #移动轨迹
-                            gamestate.Piecemove(validmoves[i])  #  移动棋子
-                            movemade = True     #  表示发生了移动
-                            selected = ()  # 移动完棋子，清空记录
-                            clicked = []
-                    if not movemade:
-                        clicked =[selected]  #把当前的点击次数设置为选择当前方块
+                    # selected代表当前用户点击的方块的位置，clicked代表历史点击的方块的位置的的集合
+                    if selected == (row, column):  # 点击了相同的方块
+                        selected = ()  # 清空（取消）
+                        clicked = []
+                    else:
+                        selected = (row, column)  # 点击了不同的方块，将方块的数据存入clicked中
+                        clicked.append(selected)
+                    if len(clicked) == 2 : # 当clicked中存在两个不同的位置时，即将发生棋子的移动
+                        move = Chessbasic.Move(clicked[0], clicked[1], gamestate.board)
+                        print(move.getChess())
+                        for i in range(len(validmoves)):
+                            if move == validmoves[i]:  #  如果该位置属于合法落子位置集合
+                                animateMove(validmoves[i], screen, gamestate.board, clock) #移动轨迹
+                                gamestate.Piecemove(validmoves[i])  #  移动棋子
+                                movemade = True     #  表示发生了移动
+                                selected = ()  # 移动完棋子，清空记录
+                                clicked = []
+                        if not movemade:
+                            clicked =[selected]  #把当前的点击次数设置为选择当前方块
 
 
             # 键盘事件
@@ -75,6 +81,20 @@ def main():
                 if event.key == pygame.K_z:
                     gamestate.Pieceundo()
                     movemade = True
+
+
+
+
+
+        #AI 移动
+        if not gameover and not humanturn:
+            AImove = AI.randommove(validmoves)
+            gamestate.Piecemove(AImove)
+            movemade = True
+
+
+
+
 
 
         if movemade : #  如果移动发生了，重新获得可落子位置
