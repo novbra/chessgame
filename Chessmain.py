@@ -34,7 +34,7 @@ def main():
     movemade = False # 判断是否发生合法移动
     selected = ()  # 存储被选中的方块（row，col）
     clicked = []  # 存储用户点击的方块[(4,2),(5,3)]
-    player1 = False # 如果是人类在操作白棋，则其值为True
+    player1 = True # 如果是人类在操作白棋，则其值为True
     player2 = False # 如果是人类在操作黑棋，则其值为True
     gameover = False
 
@@ -66,7 +66,7 @@ def main():
                         print(move.getChess())
                         for i in range(len(validmoves)):
                             if move == validmoves[i]:  #  如果该位置属于合法落子位置集合
-                                animateMove(validmoves[i], screen, gamestate.board, clock) #移动轨迹
+                                # animateMove(validmoves[i], screen, gamestate.board, clock) #移动轨迹
                                 gamestate.Piecemove(validmoves[i])  #  移动棋子
                                 movemade = True     #  表示发生了移动
                                 selected = ()  # 移动完棋子，清空记录
@@ -98,6 +98,7 @@ def main():
 
 
         if movemade : #  如果移动发生了，重新获得可落子位置
+            animateMove(gamestate.movelog[-1], screen, gamestate.board,clock) #移动轨迹
             validmoves = gamestate.Getvalidmove()
             movemade = False
 
@@ -107,8 +108,9 @@ def main():
         pygame.display.flip()
 
 '''
-highlight square selected and move for piece selected
+highlight square selected and move for piece selected 突出显示选定的方块并为选定的块移动
 '''
+
 def highlightSquares(screen,gamestate,validmoves,sqSelected):
     if sqSelected!=():
         row,column=sqSelected
@@ -155,33 +157,27 @@ animating a move
 def animateMove(move, screen, board, clock):
     global colors
 
-    dr = move.endrow - move.startrow
-    dc = move.endcolumn - move.startcolumn
+    dR = move.endrow - move.startrow
+    dC = move.endcolumn - move.startcolumn
 
     framesPerSquare = 10  # 移动一个格子所需的帧数，调整framesPerSquare的值以控制动画的速度。
+    frameCount =(abs(dR)+abs(dC))*framesPerSquare
 
-    framesCount = (abs(dr) + abs(dc)) * framesPerSquare
-    for frame in range(framesCount + 1):
-        row = move.startrow + dr * frame / framesCount
-        col = move.startcolumn + dc * frame / framesCount
-
-        # 在中间位置绘制棋盘和棋子
+    for frame in range(frameCount +1):
+        r,c=(move.startrow + dR*frame/frameCount,move.startcolumn + dC*frame/frameCount)
         Drawboard(screen)
         Drawpieces(screen, board)
-        color = colors[(move.endrow + move.endcolumn) % 2]
-        endSquare = pygame.Rect(move.endcolumn * PieceSIZE, move.endrow * PieceSIZE, PieceSIZE, PieceSIZE)
-        pygame.draw.rect(screen, color, endSquare)
+        #erase the piece moved from its ending square
+        color = colors[(move.endrow + move.endcolumn)% 2]
+        endSquare = pygame.Rect(move.endcolumn*PieceSIZE, move.endrow*PieceSIZE, PieceSIZE, PieceSIZE)
+        pygame.draw.rect(screen,color,endSquare)
         if move.pieceend != '--':
-            screen.blit(img[move.pieceend], endSquare)
-
-        # 在中间位置绘制移动中的棋子
-        screen.blit(img[move.piecestart], pygame.Rect(col * PieceSIZE, row * PieceSIZE, PieceSIZE, PieceSIZE))
-
+            screen.blit(img[move.pieceCaptured],endSquare)
+        #draw moving piece
+        # screen.blit(img[move.piecestart], pygame.Rect(c*PieceSIZE,r*PieceSIZE, PieceSIZE, PieceSIZE))
+        screen.blit(img[move.piecestart], pygame.Rect(c * PieceSIZE, r * PieceSIZE, PieceSIZE, PieceSIZE))
         pygame.display.flip()
         clock.tick(60)
-
-
-
 
 # 运行
 if __name__ == '__main__':
