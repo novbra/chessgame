@@ -34,10 +34,10 @@ def main():
     movemade = False # 判断是否发生合法移动
     selected = ()  # 存储被选中的方块（row，col）
     clicked = []  # 存储用户点击的方块[(4,2),(5,3)]
-    player1 = True # 如果是人类在操作白棋，则其值为True
-    player2 = True # 如果是人类在操作黑棋，则其值为True
-    gameover = False
+    player1 = False # 如果是人类在操作白棋，则其值为True
+    player2 = False # 如果是人类在操作黑棋，则其值为True
     animate = False #flag variable for when we should animate a move
+    gameover = False
 
     running = True
 
@@ -79,16 +79,16 @@ def main():
 
             # 键盘事件
             elif event.type == pygame.KEYDOWN:
-                # 按下Z键，撤回一步
-                if event.key == pygame.K_z :
+                
+                if event.key == pygame.K_z :# 按下Z键，撤回一步
                     animate = False
                     gamestate.Pieceundo()
                     movemade = True
-                if event.key == pygame.K_1 :
+                if event.key == pygame.K_1 :# 按下1键，撤回一步
                     animate = False
                     gamestate.Pieceundo()
                     movemade = True
-                if event.key == pygame.K_r :
+                if event.key == pygame.K_r :# 按下r键，复原棋盘
                     gamestate = Chessbasic.GameState()
                     validmoves = gamestate.Getvalidmove()
                     selected = ()
@@ -119,6 +119,18 @@ def main():
             animate = False
 
         Drawgame(screen, gamestate,validmoves,selected)
+
+        if gamestate.checkMate:
+            gameover = True
+            if gamestate.IswTomove:
+                drawText(screen,'Black wins by checkmate')
+            else:
+                drawText(screen,'White wins by checkmate')
+        elif gamestate.staleMate:
+            gameover = True
+            drawText(screen,'gamestate')
+
+
 
         pygame.display.flip()
 
@@ -191,6 +203,15 @@ def animateMove(move, screen, board, clock):
         screen.blit(img[move.piecestart], pygame.Rect(c * PieceSIZE, r * PieceSIZE, PieceSIZE, PieceSIZE))
         pygame.display.flip()
         clock.tick(60)
+
+def drawText(screen, text):
+    font =pygame.font.SysFont("Helvitca",64,True, False)
+    textObject =font.render(text,0, pygame.Color('Black'))
+    textLocation = pygame.Rect(0, 0, WIDTH, HEIGHT).move(WIDTH/2 - textObject.get_width()/2, HEIGHT/2 - textObject.get_height()/2)
+    screen.blit(textObject,textLocation)
+    textObject =font.render(text,0,pygame.Color('Black'))
+    screen.blit(textObject, textLocation.move(2, 2))
+                                                                                                   
 
 # 运行
 if __name__ == '__main__':

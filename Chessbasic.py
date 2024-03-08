@@ -16,7 +16,7 @@ class GameState():
         self.moveFunctions = {'p': self.getPawnMoves, 'r': self.getRookMoves,
                               'n': self.getKnightMoves, 'q': self.getQueenMoves,
                               'k': self.getKingMoves, 'b': self.getBishopMoves}
-        self.IswTomove = True
+        self.IswTomove = True  #判断输赢
         self.movelog = []
         self.whiteKingLocation = (7, 4)
         self.blackKingLocation = (0, 4)
