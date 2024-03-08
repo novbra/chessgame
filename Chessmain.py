@@ -35,8 +35,9 @@ def main():
     selected = ()  # 存储被选中的方块（row，col）
     clicked = []  # 存储用户点击的方块[(4,2),(5,3)]
     player1 = True # 如果是人类在操作白棋，则其值为True
-    player2 = False # 如果是人类在操作黑棋，则其值为True
+    player2 = True # 如果是人类在操作黑棋，则其值为True
     gameover = False
+    animate = False #flag variable for when we should animate a move
 
     running = True
 
@@ -69,6 +70,7 @@ def main():
                                 # animateMove(validmoves[i], screen, gamestate.board, clock) #移动轨迹
                                 gamestate.Piecemove(validmoves[i])  #  移动棋子
                                 movemade = True     #  表示发生了移动
+                                animate = True     #开启动画
                                 selected = ()  # 移动完棋子，清空记录
                                 clicked = []
                         if not movemade:
@@ -78,9 +80,21 @@ def main():
             # 键盘事件
             elif event.type == pygame.KEYDOWN:
                 # 按下Z键，撤回一步
-                if event.key == pygame.K_z:
+                if event.key == pygame.K_z :
+                    animate = False
                     gamestate.Pieceundo()
                     movemade = True
+                if event.key == pygame.K_1 :
+                    animate = False
+                    gamestate.Pieceundo()
+                    movemade = True
+                if event.key == pygame.K_r :
+                    gamestate = Chessbasic.GameState()
+                    validmoves = gamestate.Getvalidmove()
+                    selected = ()
+                    clicked = []
+                    movemade = True
+                    animate = False
 
 
 
@@ -98,10 +112,11 @@ def main():
 
 
         if movemade : #  如果移动发生了，重新获得可落子位置
-            animateMove(gamestate.movelog[-1], screen, gamestate.board,clock) #移动轨迹
+            if animate:
+                animateMove(gamestate.movelog[-1], screen, gamestate.board,clock) #移动轨迹
             validmoves = gamestate.Getvalidmove()
             movemade = False
-
+            animate = False
 
         Drawgame(screen, gamestate,validmoves,selected)
 
@@ -172,9 +187,7 @@ def animateMove(move, screen, board, clock):
         endSquare = pygame.Rect(move.endcolumn*PieceSIZE, move.endrow*PieceSIZE, PieceSIZE, PieceSIZE)
         pygame.draw.rect(screen,color,endSquare)
         if move.pieceend != '--':
-            screen.blit(img[move.pieceCaptured],endSquare)
-        #draw moving piece
-        # screen.blit(img[move.piecestart], pygame.Rect(c*PieceSIZE,r*PieceSIZE, PieceSIZE, PieceSIZE))
+            screen.blit(img[move.pieceend],endSquare)
         screen.blit(img[move.piecestart], pygame.Rect(c * PieceSIZE, r * PieceSIZE, PieceSIZE, PieceSIZE))
         pygame.display.flip()
         clock.tick(60)
