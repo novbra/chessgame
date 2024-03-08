@@ -34,8 +34,8 @@ def main():
     movemade = False # 判断是否发生合法移动
     selected = ()  # 存储被选中的方块（row，col）
     clicked = []  # 存储用户点击的方块[(4,2),(5,3)]
-    player1 = False # 如果是人类在操作白棋，则其值为True
-    player2 = False # 如果是人类在操作黑棋，则其值为True
+    player1 =False# 如果是人类在操作白棋，则其值为True
+    player2 =False # 如果是人类在操作黑棋，则其值为True
     animate = False #flag variable for when we should animate a move
     gameover = False
 
@@ -84,10 +84,6 @@ def main():
                     animate = False
                     gamestate.Pieceundo()
                     movemade = True
-                if event.key == pygame.K_1 :# 按下1键，撤回一步
-                    animate = False
-                    gamestate.Pieceundo()
-                    movemade = True
                 if event.key == pygame.K_r :# 按下r键，复原棋盘
                     gamestate = Chessbasic.GameState()
                     validmoves = gamestate.Getvalidmove()
@@ -102,9 +98,12 @@ def main():
 
         #AI 移动
         if not gameover and not humanturn:
+            # AImove = AI.greedymove(gamestate,validmoves)
+            # if AImove is None:
             AImove = AI.randommove(validmoves)
             gamestate.Piecemove(AImove)
             movemade = True
+            animate = False
 
 
 
@@ -120,7 +119,7 @@ def main():
 
         Drawgame(screen, gamestate,validmoves,selected)
 
-        if gamestate.checkMate:
+        if gamestate.checkMate == True:
             gameover = True
             if gamestate.IswTomove:
                 drawText(screen,'Black wins by checkmate')

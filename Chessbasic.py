@@ -16,7 +16,7 @@ class GameState():
         self.moveFunctions = {'p': self.getPawnMoves, 'r': self.getRookMoves,
                               'n': self.getKnightMoves, 'q': self.getQueenMoves,
                               'k': self.getKingMoves, 'b': self.getBishopMoves}
-        self.IswTomove = True  #判断输赢
+        self.IswTomove = True  #判断谁输谁赢
         self.movelog = []
         self.whiteKingLocation = (7, 4)
         self.blackKingLocation = (0, 4)
@@ -35,9 +35,10 @@ class GameState():
         self.board[move.endrow][move.endcolumn] = move.piecestart  #  把棋子转移到选定的方块上
         self.IswTomove = not self.IswTomove  #  回合轮换
         self.movelog.append(move)  #  在日志中增加移动记录
-        if move.moveID =="wk":
+        if move.piecestart =="wk":
             self.whiteKingLocation = (move.endrow, move.endcolumn)
-        elif move.moveID =="bk":
+            print(self.whiteKingLocation)
+        elif move.piecestart =="bk":
             self.blackKingLocation = (move.endrow, move.endcolumn)#更新双王位置
         #pawn promotion小兵晋升
         if move.isPawnPromotion:
@@ -75,9 +76,9 @@ class GameState():
             self.board[move.startrow][move.startcolumn] =move.piecestart  #把棋子的位置复原
             self.board[move.endrow][move.endcolumn] = move.pieceend
             self.IswTomove = not self.IswTomove  # 回合轮换
-            if move.moveID == "wk":
+            if move.piecestart == "wk":
                 self.whiteKingLocation = (move.startrow, move.startcolumn)
-            elif move.moveID == "bk":
+            elif move.piecestart == "bk":
                 self.blackKingLocation = (move.startrow, move.startcolumn)  # 更新双王位置
             if move.isEnpassantMove:
                 self.board[move.endrow][move.endcolumn] = '--'
