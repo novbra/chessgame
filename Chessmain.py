@@ -2,7 +2,7 @@
 主界面，处理输入以及显示当前游戏状态
 """
 import pygame
-import Chessbasic
+import Chessbasic, AI
 
 # 全局变量
 HEIGHT = 960
@@ -34,61 +34,110 @@ def main():
     movemade = False # 判断是否发生合法移动
     selected = ()  # 存储被选中的方块（row，col）
     clicked = []  # 存储用户点击的方块[(4,2),(5,3)]
+    player1 = False # 如果是人类在操作白棋，则其值为True
+    player2 = False # 如果是人类在操作黑棋，则其值为True
+    animate = False #flag variable for when we should animate a move
+    gameover = False
+
     running = True
 
     # 游戏主循环
     while running:
+        humanturn = (gamestate.IswTomove and player1) or (not gamestate.IswTomove and player2)# 是否是人类的回合
         for event in pygame.event.get():
             
             if event.type == pygame.QUIT:
                 running = False
             #  鼠标点击事件
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                location = pygame.mouse.get_pos()  # 捕获鼠标点击位置
-                row = location[1]//PieceSIZE  # 位置整除8，获得点击的是第几块的数据
-                column = location[0]//PieceSIZE
+                if not gameover and humanturn:
+                    location = pygame.mouse.get_pos()  # 捕获鼠标点击位置
+                    row = location[1]//PieceSIZE  # 位置整除8，获得点击的是第几块的数据
+                    column = location[0]//PieceSIZE
 
-                # selected代表当前用户点击的方块的位置，clicked代表历史点击的方块的位置的的集合
-                if selected == (row, column):  # 点击了相同的方块
-                    selected = ()  # 清空（取消）
-                    clicked = []
-                else:
-                    selected = (row, column)  # 点击了不同的方块，将方块的数据存入clicked中
-                    clicked.append(selected)
-                if len(clicked) == 2 : # 当clicked中存在两个不同的位置时，即将发生棋子的移动
-                    move = Chessbasic.Move(clicked[0], clicked[1], gamestate.board)
-                    print(move.getChess())
-                    for i in range(len(validmoves)):
-                        if move == validmoves[i]:  #  如果该位置属于合法落子位置集合
-                            animateMove(validmoves[i], screen, gamestate.board, clock) #移动轨迹
-                            gamestate.Piecemove(validmoves[i])  #  移动棋子
-                            movemade = True     #  表示发生了移动
-                            selected = ()  # 移动完棋子，清空记录
-                            clicked = []
-                    if not movemade:
-                        clicked =[selected]  #把当前的点击次数设置为选择当前方块
+                    # selected代表当前用户点击的方块的位置，clicked代表历史点击的方块的位置的的集合
+                    if selected == (row, column):  # 点击了相同的方块
+                        selected = ()  # 清空（取消）
+                        clicked = []
+                    else:
+                        selected = (row, column)  # 点击了不同的方块，将方块的数据存入clicked中
+                        clicked.append(selected)
+                    if len(clicked) == 2 : # 当clicked中存在两个不同的位置时，即将发生棋子的移动
+                        move = Chessbasic.Move(clicked[0], clicked[1], gamestate.board)
+                        print(move.getChess())
+                        for i in range(len(validmoves)):
+                            if move == validmoves[i]:  #  如果该位置属于合法落子位置集合
+                                # animateMove(validmoves[i], screen, gamestate.board, clock) #移动轨迹
+                                gamestate.Piecemove(validmoves[i])  #  移动棋子
+                                movemade = True     #  表示发生了移动
+                                animate = True     #开启动画
+                                selected = ()  # 移动完棋子，清空记录
+                                clicked = []
+                        if not movemade:
+                            clicked =[selected]  #把当前的点击次数设置为选择当前方块
 
 
             # 键盘事件
             elif event.type == pygame.KEYDOWN:
-                # 按下Z键，撤回一步
-                if event.key == pygame.K_z:
+                
+                if event.key == pygame.K_z :# 按下Z键，撤回一步
+                    animate = False
                     gamestate.Pieceundo()
                     movemade = True
+                if event.key == pygame.K_1 :# 按下1键，撤回一步
+                    animate = False
+                    gamestate.Pieceundo()
+                    movemade = True
+                if event.key == pygame.K_r :# 按下r键，复原棋盘
+                    gamestate = Chessbasic.GameState()
+                    validmoves = gamestate.Getvalidmove()
+                    selected = ()
+                    clicked = []
+                    movemade = True
+                    animate = False
+
+
+
+
+
+        #AI 移动
+        if not gameover and not humanturn:
+            AImove = AI.randommove(validmoves)
+            gamestate.Piecemove(AImove)
+            movemade = True
+
+
+
+
 
 
         if movemade : #  如果移动发生了，重新获得可落子位置
+            if animate:
+                animateMove(gamestate.movelog[-1], screen, gamestate.board,clock) #移动轨迹
             validmoves = gamestate.Getvalidmove()
             movemade = False
-
+            animate = False
 
         Drawgame(screen, gamestate,validmoves,selected)
+
+        if gamestate.checkMate:
+            gameover = True
+            if gamestate.IswTomove:
+                drawText(screen,'Black wins by checkmate')
+            else:
+                drawText(screen,'White wins by checkmate')
+        elif gamestate.staleMate:
+            gameover = True
+            drawText(screen,'gamestate')
+
+
 
         pygame.display.flip()
 
 '''
-highlight square selected and move for piece selected
+highlight square selected and move for piece selected 突出显示选定的方块并为选定的块移动
 '''
+
 def highlightSquares(screen,gamestate,validmoves,sqSelected):
     if sqSelected!=():
         row,column=sqSelected
@@ -135,33 +184,34 @@ animating a move
 def animateMove(move, screen, board, clock):
     global colors
 
-    dr = move.endrow - move.startrow
-    dc = move.endcolumn - move.startcolumn
+    dR = move.endrow - move.startrow
+    dC = move.endcolumn - move.startcolumn
 
     framesPerSquare = 10  # 移动一个格子所需的帧数，调整framesPerSquare的值以控制动画的速度。
+    frameCount =(abs(dR)+abs(dC))*framesPerSquare
 
-    framesCount = (abs(dr) + abs(dc)) * framesPerSquare
-    for frame in range(framesCount + 1):
-        row = move.startrow + dr * frame / framesCount
-        col = move.startcolumn + dc * frame / framesCount
-
-        # 在中间位置绘制棋盘和棋子
+    for frame in range(frameCount +1):
+        r,c=(move.startrow + dR*frame/frameCount,move.startcolumn + dC*frame/frameCount)
         Drawboard(screen)
         Drawpieces(screen, board)
-        color = colors[(move.endrow + move.endcolumn) % 2]
-        endSquare = pygame.Rect(move.endcolumn * PieceSIZE, move.endrow * PieceSIZE, PieceSIZE, PieceSIZE)
-        pygame.draw.rect(screen, color, endSquare)
+        #erase the piece moved from its ending square
+        color = colors[(move.endrow + move.endcolumn)% 2]
+        endSquare = pygame.Rect(move.endcolumn*PieceSIZE, move.endrow*PieceSIZE, PieceSIZE, PieceSIZE)
+        pygame.draw.rect(screen,color,endSquare)
         if move.pieceend != '--':
-            screen.blit(img[move.pieceend], endSquare)
-
-        # 在中间位置绘制移动中的棋子
-        screen.blit(img[move.piecestart], pygame.Rect(col * PieceSIZE, row * PieceSIZE, PieceSIZE, PieceSIZE))
-
+            screen.blit(img[move.pieceend],endSquare)
+        screen.blit(img[move.piecestart], pygame.Rect(c * PieceSIZE, r * PieceSIZE, PieceSIZE, PieceSIZE))
         pygame.display.flip()
         clock.tick(60)
 
-
-
+def drawText(screen, text):
+    font =pygame.font.SysFont("Helvitca",64,True, False)
+    textObject =font.render(text,0, pygame.Color('Black'))
+    textLocation = pygame.Rect(0, 0, WIDTH, HEIGHT).move(WIDTH/2 - textObject.get_width()/2, HEIGHT/2 - textObject.get_height()/2)
+    screen.blit(textObject,textLocation)
+    textObject =font.render(text,0,pygame.Color('Black'))
+    screen.blit(textObject, textLocation.move(2, 2))
+                                                                                                   
 
 # 运行
 if __name__ == '__main__':
