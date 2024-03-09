@@ -37,7 +37,6 @@ class GameState():
         self.movelog.append(move)  #  在日志中增加移动记录
         if move.piecestart =="wk":
             self.whiteKingLocation = (move.endrow, move.endcolumn)
-            print(self.whiteKingLocation)
         elif move.piecestart =="bk":
             self.blackKingLocation = (move.endrow, move.endcolumn)#更新双王位置
         #pawn promotion小兵晋升
