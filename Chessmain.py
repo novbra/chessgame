@@ -84,6 +84,7 @@ def main():
                     animate = False
                     gamestate.Pieceundo()
                     movemade = True
+                    gameover = False
                 if event.key == pygame.K_r :# 按下r键，复原棋盘
                     gamestate = Chessbasic.GameState()
                     validmoves = gamestate.Getvalidmove()
@@ -91,6 +92,7 @@ def main():
                     clicked = []
                     movemade = True
                     animate = False
+                    gameover =False
 
 
 
@@ -98,9 +100,9 @@ def main():
 
         #AI 移动
         if not gameover and not humanturn:
-            # AImove = AI.greedymove(gamestate,validmoves)
-            # if AImove is None:
-            AImove = AI.randommove(validmoves)
+            AImove = AI.greedymove(gamestate,validmoves)
+            if AImove is None:
+                AImove = AI.randommove(validmoves)
             gamestate.Piecemove(AImove)
             movemade = True
             animate = False
@@ -127,7 +129,7 @@ def main():
                 drawText(screen,'White wins by checkmate')
         elif gamestate.staleMate:
             gameover = True
-            drawText(screen,'gamestate')
+            drawText(screen,'Stalemate')
 
 
 
