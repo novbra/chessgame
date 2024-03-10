@@ -128,13 +128,13 @@ class GameState():
                 elif move.startcolumn==7:#right rook
                     self.currentCastlingRight.bks=False
         #if a rook  is captured
-        if move.piecestart == "wr":
+        if move.pieceend == "wr":
             if move.endrow ==7:
                 if move.endcolumn==0:
                     self.currentCastlingRight.wqs = False
                 elif move.endcolumn == 7:
                     self.currentCastlingRight.wks =False
-        elif move.piecestart =="br":
+        elif move.pieceend =="br":
             if move.endrow ==0:
                 if move.endcolumn==0:
                     self.currentCastlingRight.bqs =False
@@ -347,8 +347,8 @@ class Move():
         self.startcolumn = start[1]
         self.endrow = end[0]
         self.endcolumn = end[1]
-        self.piecestart = board[self.startrow][self.startcolumn]    #  记录棋子起始位置
-        self.pieceend = board[self.endrow][self.endcolumn]         #  记录棋子最终位置
+        self.piecestart = board[self.startrow][self.startcolumn]    #  记录棋子起始位置,=moved
+        self.pieceend = board[self.endrow][self.endcolumn]         #  记录棋子最终位置,=captured
         #PawnPromotion
         self.isPawnPromotion= (self.piecestart =='wp'and self.endrow ==0) or (self.piecestart=='bp'and self.endrow ==7)
         #Enpassant
