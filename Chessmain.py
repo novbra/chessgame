@@ -7,6 +7,8 @@ import Chessbasic, AI
 # 全局变量
 HEIGHT = 960
 WIDTH = 960
+MOVELOGHEIGHT = HEIGHT
+MOVELOGWIDTH = 400
 PieceSIZE = HEIGHT // 8  # 棋子尺寸
 img = {}  # 棋子图片集合
 
@@ -21,12 +23,12 @@ def Loadimages():
 # 游戏初始化
 def main():
     # 创建窗口
-    screen = pygame.display.set_mode((WIDTH,HEIGHT ))
+    screen = pygame.display.set_mode((WIDTH + MOVELOGWIDTH,HEIGHT ))
     # 设置标题
     pygame.display.set_caption('AI Chess')
     # 加载图片
     Loadimages()
-
+    movelogfont = pygame.font.SysFont("Arial", 24, False, False)
 
     clock = pygame.time.Clock()
     gamestate = Chessbasic.GameState()  # 棋盘状态
@@ -34,8 +36,8 @@ def main():
     movemade = False # 判断是否发生合法移动
     selected = ()  # 存储被选中的方块（row，col）
     clicked = []  # 存储用户点击的方块[(4,2),(5,3)]
-    player1 =True# 如果是人类在操作白棋，则其值为True
-    player2 =True # 如果是人类在操作黑棋，则其值为True
+    player1 =False# 如果是人类在操作白棋，则其值为True
+    player2 =False # 如果是人类在操作黑棋，则其值为True
     animate = False #flag variable for when we should animate a move
     gameover = False
 
@@ -56,7 +58,7 @@ def main():
                     column = location[0]//PieceSIZE
 
                     # selected代表当前用户点击的方块的位置，clicked代表历史点击的方块的位置的的集合
-                    if selected == (row, column):  # 点击了相同的方块
+                    if selected == (row, column) or column >=8 :  # 点击了相同的方块
                         selected = ()  # 清空（取消）
                         clicked = []
                     else:
@@ -100,9 +102,9 @@ def main():
 
         #AI 移动
         if not gameover and not humanturn:
-            AImove = AI.findminmaxmove(gamestate,validmoves)
-            if AImove is None:
-                AImove = AI.findrandommove(validmoves)
+            # AImove = AI.findminmaxmove(gamestate,validmoves)
+            # if AImove is None:
+            AImove = AI.findrandommove(validmoves)
             gamestate.Piecemove(AImove)
             movemade = True
             animate = False
@@ -119,17 +121,17 @@ def main():
             movemade = False
             animate = False
 
-        Drawgame(screen, gamestate,validmoves,selected)
+        Drawgame(screen, gamestate,validmoves,selected,movelogfont)
 
         if gamestate.checkMate == True:
             gameover = True
             if gamestate.IswTomove:
-                drawText(screen,'Black wins by checkmate')
+                drawEndgameText(screen,'Black wins by checkmate')
             else:
-                drawText(screen,'White wins by checkmate')
+                drawEndgameText(screen,'White wins by checkmate')
         elif gamestate.staleMate:
             gameover = True
-            drawText(screen,'Stalemate')
+            drawEndgameText(screen,'Stalemate')
 
 
 
@@ -157,10 +159,11 @@ def highlightSquares(screen,gamestate,validmoves,sqSelected):
 
 
 # 绘制游戏
-def Drawgame(screen, gamestate,validmoves,sqSelected):
+def Drawgame(screen, gamestate,validmoves,sqSelected,movelogfont):
     Drawboard(screen)
     highlightSquares(screen,gamestate,validmoves,sqSelected)
     Drawpieces(screen, gamestate.board)
+    Drawmovelog(screen, gamestate,movelogfont)
 
 # 绘制棋盘
 def Drawboard(screen):
@@ -177,6 +180,41 @@ def Drawpieces(screen, board):
             piece = board[row][column]
             if piece != "--":
                 screen.blit(img[piece], pygame.Rect(column * PieceSIZE, row * PieceSIZE, PieceSIZE, PieceSIZE))
+
+def Drawmovelog(screen, gamestate, font):
+    movelogRect = pygame.Rect(WIDTH,0,MOVELOGWIDTH,MOVELOGHEIGHT)
+    pygame.draw.rect(screen,pygame.Color("white"),movelogRect)
+    moveLog = gamestate.movelog
+    moveTexts = []
+    for i in range (0,len(moveLog), 2):
+        moveString = str(i//2+1) + ". "+moveLog[i].getChess() + " "
+        if i + 1 <len(moveLog):
+            moveString +=moveLog[i+1].getChess() + " "
+        moveTexts.append(moveString)
+
+    movesPerrow = 3
+    padding = 5
+    lineSpace = 2
+    textY = padding
+    for i in range(0,len(moveTexts),movesPerrow):
+        text = ""
+        for j in range(movesPerrow):
+            if i+j < len(moveTexts):
+                text += moveTexts[i+j]
+        textObject =font.render(text,True, pygame.Color('Black'))
+        textLocation = movelogRect.move(padding,textY)
+        screen.blit(textObject,textLocation)
+        textY += textObject.get_height() + lineSpace
+
+
+def drawEndgameText(screen, text):
+    font =pygame.font.SysFont("Helvitca",64,True, False)
+    textObject =font.render(text,0, pygame.Color('Black'))
+    textLocation = pygame.Rect(0, 0, WIDTH, HEIGHT).move(WIDTH/2 - textObject.get_width()/2, HEIGHT/2 - textObject.get_height()/2)
+    screen.blit(textObject,textLocation)
+    textObject =font.render(text,0,pygame.Color('Black'))
+    screen.blit(textObject, textLocation.move(2, 2))
+
 
 '''
 animating a move
@@ -208,14 +246,10 @@ def animateMove(move, screen, board, clock):
         pygame.display.flip()
         clock.tick(60)
 
-def drawText(screen, text):
-    font =pygame.font.SysFont("Helvitca",64,True, False)
-    textObject =font.render(text,0, pygame.Color('Black'))
-    textLocation = pygame.Rect(0, 0, WIDTH, HEIGHT).move(WIDTH/2 - textObject.get_width()/2, HEIGHT/2 - textObject.get_height()/2)
-    screen.blit(textObject,textLocation)
-    textObject =font.render(text,0,pygame.Color('Black'))
-    screen.blit(textObject, textLocation.move(2, 2))
-                                                                                                   
+
+
+
+
 
 # 运行
 if __name__ == '__main__':

@@ -9,7 +9,7 @@ import random
 pieceScore = {"k":0,"q":10,"r":8,"b":5,"n":5,"p":1}
 checkmate = 999
 stalemate = 0
-DEPTH    = 3 #控制递归版贪婪的递归深度
+DEPTH    = 2 #控制递归版贪婪的递归深度
 
 # 评分函数
 def scoreMaterial(board):
