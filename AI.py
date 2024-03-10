@@ -7,6 +7,64 @@ import random
 
 
 pieceScore = {"k":0,"q":10,"r":8,"b":5,"n":5,"p":1}
+
+knightScore = [[1, 1, 1, 1, 1, 1, 1, 1],
+              [1, 2, 2, 2, 2, 2, 2, 1],
+              [1, 2, 3, 3, 3, 3, 2, 1],
+              [1, 2, 3, 4, 4, 3, 2, 1],
+              [1, 2, 3, 4, 4, 3, 2, 1],
+              [1, 2, 3, 3, 3, 3, 2, 1],
+              [1, 2, 2, 2, 2, 2, 2, 1],
+              [1, 1, 1, 1, 1, 1, 1, 1]]
+
+bishopScore = [[4, 3, 2, 1, 1, 2, 3, 4],
+              [3, 4, 3, 2, 2, 3, 4, 3],
+              [2, 3, 4, 3, 3, 4, 3, 2],
+              [1, 2, 3, 4, 4, 3, 2, 1],
+              [1, 2, 3, 4, 4, 3, 2, 1],
+              [2, 3, 4, 3, 3, 4, 3, 2],
+              [3, 4, 3, 2, 2, 3, 4, 3],
+              [4, 3, 2, 1, 1, 2, 3, 4]]
+
+queenScore = [[1, 1, 1, 3, 3, 1, 1, 1],
+              [1, 2, 3, 3, 3, 1, 1, 1],
+              [1, 4, 3, 3, 3, 4, 2, 1],
+              [1, 2, 3, 4, 4, 3, 2, 1],
+              [1, 2, 3, 3, 3, 2, 2, 1],
+              [1, 4, 3, 3, 3, 4, 2, 1],
+              [1, 2, 3, 3, 3, 1, 1, 1],
+              [1, 1, 1, 3, 3, 1, 1, 1]]
+
+rookScore = [[4, 3, 4, 4, 4, 4, 3, 4],
+              [4, 4, 4, 4, 4, 4, 4, 4],
+              [1, 1, 2, 3, 3, 2, 1, 1],
+              [1, 2, 3, 4, 4, 3, 2, 1],
+              [1, 2, 3, 4, 4, 3, 2, 1],
+              [1, 1, 2, 3, 3, 2, 1, 1],
+              [4, 4, 4, 4, 4, 4, 4, 4],
+              [4, 3, 4, 4, 4, 4, 3, 4]]
+
+whitePawnScore = [[8, 8, 8, 8, 8, 8, 8, 8],
+                  [8, 8, 8, 8, 8, 8, 8, 8],
+                  [5, 6, 6, 7, 7, 6, 6, 5],
+                  [2, 3, 3, 5, 5, 3, 3, 2],
+                  [1, 2, 3, 4, 4, 3, 2, 1],
+                  [1, 1, 2, 3, 3, 2, 1, 1],
+                  [1, 1, 1, 0, 0, 1, 1, 1],
+                  [0, 0, 0, 0, 0, 0, 0, 0]]
+
+blackPawnScore = [[0, 0, 0, 0, 0, 0, 0, 0],
+                  [1, 1, 1, 0, 0, 1, 1, 1],
+                  [1, 1, 2, 3, 3, 2, 1, 1],
+                  [1, 2, 3, 4, 4, 3, 2, 1],
+                  [2, 3, 3, 5, 5, 3, 3, 2],
+                  [5, 6, 6, 7, 7, 6, 6, 5],
+                  [8, 8, 8, 8, 8, 8, 8, 8],
+                  [8, 8, 8, 8, 8, 8, 8, 8]]
+
+piecePositionScores = {"n": knightScore, 'q': queenScore, "b": bishopScore, "r": rookScore,
+                      "bp": blackPawnScore, "wp": whitePawnScore}
+
 checkmate = 999
 stalemate = 0
 DEPTH    = 2 #控制递归版贪婪的递归深度
@@ -32,12 +90,22 @@ def scoreBoard(gamestate):
         return stalemate
 
     score = 0
-    for row in gamestate.board:
-        for square in row:
-            if square[0] == "w":
-                score += pieceScore[square[1]]
-            elif square[0] == "b":
-                score -= pieceScore[square[1]]
+    for row in range(len(gamestate.board)):
+        for column in range(len(gamestate.board[row])):
+            square =gamestate.board[row][column]
+            if square != "--":
+                piecePositionScore =0
+                if square[1] != "k":
+                    if square[1]=="p":
+                        piecePositionScore = piecePositionScores[square][row][column]
+                    else:
+                        piecePositionScore = piecePositionScores[square[1]][row][column]
+
+
+                if square[0] == "w":
+                    score += pieceScore[square[1]] +piecePositionScore * .1
+                elif square[0] == "b":
+                    score -= pieceScore[square[1]] +piecePositionScore * .1
     return score
 
 
@@ -88,8 +156,8 @@ def findminmaxmove(gamestate,validmoves):
     nextmove = None
     counter = 0 #记录调用了多少次的算法函数
     # minmaxmove(gamestate,validmoves,DEPTH,gamestate.IswTomove)
-    negamaxmove(gamestate,validmoves,DEPTH, 1 if gamestate.IswTomove else -1)
-    # negamaxalphabetamove(gamestate, validmoves,-checkmate, checkmate,  DEPTH, 1 if gamestate.IswTomove else -1)
+    # negamaxmove(gamestate,validmoves,DEPTH, 1 if gamestate.IswTomove else -1)
+    negamaxalphabetamove(gamestate, validmoves,-checkmate, checkmate,  DEPTH, 1 if gamestate.IswTomove else -1)
     print(counter)
     return nextmove
 
@@ -163,6 +231,7 @@ def negamaxalphabetamove(gamestate, validmoves,alpha,beta, depth, turn):
             maxscore = score
             if depth == DEPTH:
                 nextmove = move
+                print(move,score)
         gamestate.Pieceundo()
         if maxscore>alpha:# 剪枝开始，alpha表示当前搜索路径上已知的最佳分数，beta表示对手的最佳分数。如果某个节点的分数超出了这个范围，就可以停止搜索该节点的子树。
             alpha =maxscore

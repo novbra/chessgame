@@ -102,9 +102,9 @@ def main():
 
         #AI 移动
         if not gameover and not humanturn:
-            # AImove = AI.findminmaxmove(gamestate,validmoves)
-            # if AImove is None:
-            AImove = AI.findrandommove(validmoves)
+            AImove = AI.findminmaxmove(gamestate,validmoves)
+            if AImove is None:
+                AImove = AI.findrandommove(validmoves)
             gamestate.Piecemove(AImove)
             movemade = True
             animate = False
