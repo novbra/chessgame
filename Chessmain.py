@@ -38,7 +38,7 @@ def main():
     movemade = False # 判断是否发生合法移动
     selected = ()  # 存储被选中的方块（row，col）
     clicked = []  # 存储用户点击的方块[(4,2),(5,3)]
-    player1 =True# 如果是人类在操作白棋，则其值为True
+    player1 =False# 如果是人类在操作白棋，则其值为True
     player2 =False# 如果是人类在操作黑棋，则其值为True
     animate = False #flag variable for when we should animate a move
     gameover = False
@@ -56,31 +56,33 @@ def main():
                 running = False
             #  鼠标点击事件
             elif event.type == pygame.MOUSEBUTTONDOWN:
+                location = pygame.mouse.get_pos()  # 捕获鼠标点击位置
+                if event.pos[0] >= WIDTH + 175 and event.pos[0] <= WIDTH + 275 and event.pos[1] >= HEIGHT // 2 + 100 and \
+                        event.pos[1] <= HEIGHT // 2 + 150:
+                    # 如果鼠标点击在按钮的区域内，执行按钮的动作
+                    if (player1 == True and player2 == False) or (player2 == True and player1 == False):
+                        animate = False
+                        gamestate.Pieceundo()
+                        gamestate.Pieceundo()
+                        movemade = True
+                        gameover = False
+                    else:
+                        animate = False
+                        gamestate.Pieceundo()
+                        movemade = True
+                        gameover = False
+                if event.pos[0] >= WIDTH + 175 and event.pos[0] <= WIDTH + 275 and event.pos[1] >= HEIGHT // 2 + 200 and \
+                        event.pos[1] <= HEIGHT // 2 + 250:
+                    gamestate = Chessbasic.GameState()
+                    validmoves = gamestate.Getvalidmove()
+                    selected = ()
+                    clicked = []
+                    movemade = True
+                    animate = False
+                    gameover = False
                 if not gameover and humanturn:
-                    location = pygame.mouse.get_pos()  # 捕获鼠标点击位置
                     row = location[1]//PieceSIZE  # 位置整除8，获得点击的是第几块的数据
                     column = location[0]//PieceSIZE
-                    if event.pos[0] >= WIDTH + 175 and event.pos[0]<=WIDTH + 275 and event.pos[1] >= HEIGHT // 2 + 100 and event.pos[1]<=HEIGHT // 2 + 150:
-                        # 如果鼠标点击在按钮的区域内，执行按钮的动作
-                        if (player1 == True and player2 == False) or (player2 == True and player1 == False):
-                            animate = False
-                            gamestate.Pieceundo()
-                            gamestate.Pieceundo()
-                            movemade = True
-                            gameover = False
-                        else:
-                            animate = False
-                            gamestate.Pieceundo()
-                            movemade = True
-                            gameover = False
-                    if event.pos[0] >= WIDTH + 175 and event.pos[0] <= WIDTH + 275 and event.pos[1] >= HEIGHT // 2 + 200 and event.pos[1] <= HEIGHT // 2 + 250:
-                        gamestate = Chessbasic.GameState()
-                        validmoves = gamestate.Getvalidmove()
-                        selected = ()
-                        clicked = []
-                        movemade = True
-                        animate = False
-                        gameover = False
                     # selected代表当前用户点击的方块的位置，clicked代表历史点击的方块的位置的的集合
                     if selected == (row, column) or column >=8 :  # 点击了相同的方块
                         selected = ()  # 清空（取消）
