@@ -7,8 +7,10 @@ import Chessbasic, AI
 # 全局变量
 HEIGHT = 960
 WIDTH = 960
-MOVELOGHEIGHT = HEIGHT
-MOVELOGWIDTH = 400
+MOVELOGHEIGHT = HEIGHT//2
+MOVELOGWIDTH = 450
+SCROLLBAR_WIDTH = 10
+SCROLL_SPEED = 20
 PieceSIZE = HEIGHT // 8  # 棋子尺寸
 img = {}  # 棋子图片集合
 
@@ -36,18 +38,20 @@ def main():
     movemade = False # 判断是否发生合法移动
     selected = ()  # 存储被选中的方块（row，col）
     clicked = []  # 存储用户点击的方块[(4,2),(5,3)]
-    player1 =False# 如果是人类在操作白棋，则其值为True
-    player2 =False # 如果是人类在操作黑棋，则其值为True
+    player1 =True# 如果是人类在操作白棋，则其值为True
+    player2 =False# 如果是人类在操作黑棋，则其值为True
     animate = False #flag variable for when we should animate a move
     gameover = False
-
+    scroll_offset = 0  # 初始化滚动偏移量
+    button1 = Button(WIDTH + 175, HEIGHT // 2 + 100, 100, 50, "Undo")
+    button2 = Button(WIDTH + 175, HEIGHT // 2 + 200, 100, 50, "Reset")
     running = True
 
     # 游戏主循环
     while running:
         humanturn = (gamestate.IswTomove and player1) or (not gamestate.IswTomove and player2)# 是否是人类的回合
         for event in pygame.event.get():
-            
+
             if event.type == pygame.QUIT:
                 running = False
             #  鼠标点击事件
@@ -56,7 +60,27 @@ def main():
                     location = pygame.mouse.get_pos()  # 捕获鼠标点击位置
                     row = location[1]//PieceSIZE  # 位置整除8，获得点击的是第几块的数据
                     column = location[0]//PieceSIZE
-
+                    if event.pos[0] >= WIDTH + 175 and event.pos[0]<=WIDTH + 275 and event.pos[1] >= HEIGHT // 2 + 100 and event.pos[1]<=HEIGHT // 2 + 150:
+                        # 如果鼠标点击在按钮的区域内，执行按钮的动作
+                        if (player1 == True and player2 == False) or (player2 == True and player1 == False):
+                            animate = False
+                            gamestate.Pieceundo()
+                            gamestate.Pieceundo()
+                            movemade = True
+                            gameover = False
+                        else:
+                            animate = False
+                            gamestate.Pieceundo()
+                            movemade = True
+                            gameover = False
+                    if event.pos[0] >= WIDTH + 175 and event.pos[0] <= WIDTH + 275 and event.pos[1] >= HEIGHT // 2 + 200 and event.pos[1] <= HEIGHT // 2 + 250:
+                        gamestate = Chessbasic.GameState()
+                        validmoves = gamestate.Getvalidmove()
+                        selected = ()
+                        clicked = []
+                        movemade = True
+                        animate = False
+                        gameover = False
                     # selected代表当前用户点击的方块的位置，clicked代表历史点击的方块的位置的的集合
                     if selected == (row, column) or column >=8 :  # 点击了相同的方块
                         selected = ()  # 清空（取消）
@@ -83,10 +107,17 @@ def main():
             elif event.type == pygame.KEYDOWN:
                 
                 if event.key == pygame.K_z :# 按下Z键，撤回一步
-                    animate = False
-                    gamestate.Pieceundo()
-                    movemade = True
-                    gameover = False
+                    if (player1==True and player2 ==False)or (player2 ==True and player1==False):
+                        animate = False
+                        gamestate.Pieceundo()
+                        gamestate.Pieceundo()
+                        movemade = True
+                        gameover = False
+                    else:
+                        animate = False
+                        gamestate.Pieceundo()
+                        movemade = True
+                        gameover = False
                 if event.key == pygame.K_r :# 按下r键，复原棋盘
                     gamestate = Chessbasic.GameState()
                     validmoves = gamestate.Getvalidmove()
@@ -99,15 +130,14 @@ def main():
 
 
 
-
         #AI 移动
         if not gameover and not humanturn:
-            # AImove = AI.findminmaxmove(gamestate,validmoves)
-            # if AImove is None:
-            AImove = AI.findrandommove(validmoves)
+            AImove = AI.findminmaxmove(gamestate,validmoves)
+            if AImove is None:
+                AImove = AI.findrandommove(validmoves)
             gamestate.Piecemove(AImove)
             movemade = True
-            animate = False
+            animate = True
 
 
 
@@ -119,9 +149,16 @@ def main():
                 animateMove(gamestate.movelog[-1], screen, gamestate.board,clock) #移动轨迹
             validmoves = gamestate.Getvalidmove()
             movemade = False
-            animate = False
+            animate = True
 
-        Drawgame(screen, gamestate,validmoves,selected,movelogfont)
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_a]:
+            scroll_offset += SCROLL_SPEED
+        if keys[pygame.K_s]:
+            scroll_offset -= SCROLL_SPEED
+
+        scroll_offset = max(0, min(scroll_offset, MOVELOGHEIGHT))  # 确保偏移在边界内
+        Drawgame(screen, gamestate,validmoves,selected,movelogfont,scroll_offset,button1,button2)
 
         if gamestate.checkMate == True:
             gameover = True
@@ -159,12 +196,14 @@ def highlightSquares(screen,gamestate,validmoves,sqSelected):
 
 
 # 绘制游戏
-def Drawgame(screen, gamestate,validmoves,sqSelected,movelogfont):
+def Drawgame(screen, gamestate,validmoves,sqSelected,movelogfont,scroll_offset,button1,button2):
     Drawboard(screen)
     highlightSquares(screen,gamestate,validmoves,sqSelected)
     Drawpieces(screen, gamestate.board)
-    Drawmovelog(screen, gamestate,movelogfont)
-
+    Drawmovelog(screen, gamestate,movelogfont,scroll_offset)
+    Drawbuttonpart(screen)
+    button1.draw(screen)
+    button2.draw(screen)
 # 绘制棋盘
 def Drawboard(screen):
     global colors
@@ -181,31 +220,64 @@ def Drawpieces(screen, board):
             if piece != "--":
                 screen.blit(img[piece], pygame.Rect(column * PieceSIZE, row * PieceSIZE, PieceSIZE, PieceSIZE))
 
-def Drawmovelog(screen, gamestate, font):
-    movelogRect = pygame.Rect(WIDTH,0,MOVELOGWIDTH,MOVELOGHEIGHT)
-    pygame.draw.rect(screen,pygame.Color("white"),movelogRect)
+def Drawmovelog(screen, gamestate, font, scroll_offset):
+    # 定义移动日志的矩形区域
+    movelogRect = pygame.Rect(WIDTH, 0, MOVELOGWIDTH - SCROLLBAR_WIDTH, MOVELOGHEIGHT)
+    pygame.draw.rect(screen, pygame.Color("white"), movelogRect)
+
+    # 获取移动日志并创建文本列表
     moveLog = gamestate.movelog
     moveTexts = []
-    for i in range (0,len(moveLog), 2):
-        moveString = str(i//2+1) + ". "+moveLog[i].getChess() + " "
-        if i + 1 <len(moveLog):
-            moveString +=moveLog[i+1].getChess() + " "
+    for i in range(0, len(moveLog), 2):
+        moveString = str(i // 2 + 1) + ". " + moveLog[i].getChess() + " "
+        if i + 1 < len(moveLog):  # 如果存在下一步，则添加到字符串中
+            moveString += moveLog[i + 1].getChess() + " "
         moveTexts.append(moveString)
 
+    # 设置每行显示的移动数和其他参数
     movesPerrow = 3
     padding = 5
     lineSpace = 2
-    textY = padding
-    for i in range(0,len(moveTexts),movesPerrow):
+
+    # 计算实际文本行数，加1是为了确保总行数不为零
+    total_lines = len(moveTexts) // movesPerrow + 1
+    # 根据 scroll_offset 调整 textY 的初始位置
+    textY = padding - scroll_offset
+
+    # 计算滚动条手柄的高度
+    content_height = max(1, len(moveTexts) / movesPerrow * (font.get_height() + lineSpace))
+    handle_height = max(10, MOVELOGHEIGHT * (MOVELOGHEIGHT / content_height))
+    handle_height = min(handle_height, MOVELOGHEIGHT)
+
+    # 计算滚动条手柄的位置
+    if content_height != 0:
+        handle_position = (scroll_offset / content_height) * (MOVELOGHEIGHT - handle_height)
+        handle_position = max(0, min(handle_position, MOVELOGHEIGHT - handle_height))
+    else:
+        handle_position = 0
+
+    # 在移动日志区域绘制文本
+    for i in range(0, len(moveTexts), movesPerrow):
         text = ""
         for j in range(movesPerrow):
-            if i+j < len(moveTexts):
-                text += moveTexts[i+j]
-        textObject =font.render(text,True, pygame.Color('Black'))
-        textLocation = movelogRect.move(padding,textY)
-        screen.blit(textObject,textLocation)
+            if i + j < len(moveTexts):
+                text += moveTexts[i + j]
+        textObject = font.render(text, True, pygame.Color('Black'))
+        textLocation = movelogRect.move(padding, textY)
+        screen.blit(textObject, textLocation)
         textY += textObject.get_height() + lineSpace
 
+    # 绘制滚动条
+    scrollbarRect = pygame.Rect(WIDTH + MOVELOGWIDTH - SCROLLBAR_WIDTH, 0, SCROLLBAR_WIDTH, MOVELOGHEIGHT)
+    pygame.draw.rect(screen, pygame.Color('gray'), scrollbarRect)
+
+    # 绘制滚动条手柄
+    scrollbar_handle = pygame.Rect(WIDTH + MOVELOGWIDTH - SCROLLBAR_WIDTH, handle_position, SCROLLBAR_WIDTH, handle_height)
+    pygame.draw.rect(screen, pygame.Color('darkgray'), scrollbar_handle)
+
+def Drawbuttonpart(screen):
+    movelogRect = pygame.Rect(WIDTH, HEIGHT//2, MOVELOGWIDTH, MOVELOGHEIGHT)
+    pygame.draw.rect(screen, pygame.Color("white"), movelogRect)
 
 def drawEndgameText(screen, text):
     font =pygame.font.SysFont("Helvitca",64,True, False)
@@ -248,6 +320,28 @@ def animateMove(move, screen, board, clock):
 
 
 
+class Button:
+    def __init__(self, x, y, width, height, text, color=(200, 200, 200), hover_color=(150, 150, 150)):
+        self.rect = pygame.Rect(x, y, width, height)
+        self.text = text
+        self.color = color
+        self.hover_color = hover_color
+        self.font = pygame.font.Font(None, 36)
+        self.image = self.create_button_image()
+
+    def create_button_image(self):
+        button_surface = pygame.Surface((self.rect.width, self.rect.height))
+        button_surface.fill(self.color)
+
+        text_surface = self.font.render(self.text, True, (0, 0, 0))
+        text_rect = text_surface.get_rect(center=(self.rect.width / 2, self.rect.height / 2))
+
+        button_surface.blit(text_surface, text_rect)
+
+        return button_surface
+
+    def draw(self, screen):
+        screen.blit(self.image, self.rect)
 
 
 

@@ -9,7 +9,7 @@ import random
 pieceScore = {"k":0,"q":10,"r":8,"b":5,"n":5,"p":1}
 checkmate = 999
 stalemate = 0
-DEPTH    = 2 #控制递归版贪婪的递归深度
+DEPTH    = 3 #控制递归版贪婪的递归深度
 
 # 评分函数
 def scoreMaterial(board):
@@ -88,8 +88,8 @@ def findminmaxmove(gamestate,validmoves):
     nextmove = None
     counter = 0 #记录调用了多少次的算法函数
     # minmaxmove(gamestate,validmoves,DEPTH,gamestate.IswTomove)
-    negamaxmove(gamestate,validmoves,DEPTH, 1 if gamestate.IswTomove else -1)
-    # negamaxalphabetamove(gamestate, validmoves,-checkmate, checkmate,  DEPTH, 1 if gamestate.IswTomove else -1)
+    # negamaxmove(gamestate,validmoves,DEPTH, 1 if gamestate.IswTomove else -1)
+    negamaxalphabetamove(gamestate, validmoves,-checkmate, checkmate,  DEPTH, 1 if gamestate.IswTomove else -1)
     print(counter)
     return nextmove
 
