@@ -23,6 +23,7 @@ class GameState():
         self.checkMate = False #被将的状态
         self.staleMate = False #僵局的状态
         self.enpassantPossible=()
+        self.enpassantPossiblelog =[self.enpassantPossible]
         self.currentCastlingRight =CastleRights(True,True,True,True)
         self.castleRightsLog = [CastleRights(self.currentCastlingRight.wks,self.currentCastlingRight.bks,
                                              self.currentCastlingRight.wqs,self.currentCastlingRight.bqs)]
@@ -62,6 +63,8 @@ class GameState():
                 self.board[move.endrow][move.endcolumn + 1]=self.board[move.endrow][move.endcolumn-2]#moves the rook
                 self.board[move.endrow][move.endcolumn -2] = '--'
 
+        self.enpassantPossiblelog.append(self.enpassantPossible)
+
         #update cateling rights
         self.updateCastleRights(move)
         self.castleRightsLog.append(CastleRights(self.currentCastlingRight.wks, self.currentCastlingRight.bks,
@@ -82,13 +85,14 @@ class GameState():
             if move.isEnpassantMove:
                 self.board[move.endrow][move.endcolumn] = '--'
                 self.board[move.startrow][move.endcolumn] = move.pieceend
-                self.enpassantPossible=(move.endrow,move.endcolumn)
-            #undo a 2 square pawn advance
-            if move.piecestart[1]=='p' and abs(move.startrow-move.endrow) ==2:
-                self.enpassantPossible=()
+
+            self.enpassantPossiblelog.pop()
+            self.enpassantPossible = self.enpassantPossiblelog[-1]
+
             #undo castling rights
             self.castleRightsLog.pop()
             self.currentCastlingRight= self.castleRightsLog[-1]#set the current castle rights to the last one in the list
+
             #undo castle move
             if move.isCastleMove:
                 if move.endcolumn-move.startcolumn==2:
@@ -123,6 +127,19 @@ class GameState():
                     self.currentCastlingRight.bqs=False
                 elif move.startcolumn==7:#right rook
                     self.currentCastlingRight.bks=False
+        #if a rook  is captured
+        if move.piecestart == "wr":
+            if move.endrow ==7:
+                if move.endcolumn==0:
+                    self.currentCastlingRight.wqs = False
+                elif move.endcolumn == 7:
+                    self.currentCastlingRight.wks =False
+        elif move.piecestart =="br":
+            if move.endrow ==0:
+                if move.endcolumn==0:
+                    self.currentCastlingRight.bqs =False
+                elif move.endcolumn==7:
+                    self.currentCastlingRight.bks =False
 
 
 # 获取合法移动集合
@@ -301,7 +318,7 @@ class GameState():
                 moves.append(Move((row,column),(row,column+2),self.board,isCastleMove=True))
 
     def getQueensideCastleMoves(self, row, column, moves):
-        if self.board[row][column - 1] == '--' and self.board[row][column - 2] == '--'and self.board[row][column-3]:
+        if self.board[row][column - 1] == '--' and self.board[row][column - 2] == '--'and self.board[row][column-3] == '--':
             if not self.squarelUnderAttack(row, column - 1) and not self.squarelUnderAttack(row, column - 2):
                 moves.append(Move((row, column), (row, column - 2), self.board, isCastleMove=True))
 

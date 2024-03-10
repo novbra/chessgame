@@ -34,8 +34,8 @@ def main():
     movemade = False # 判断是否发生合法移动
     selected = ()  # 存储被选中的方块（row，col）
     clicked = []  # 存储用户点击的方块[(4,2),(5,3)]
-    player1 =False# 如果是人类在操作白棋，则其值为True
-    player2 =False # 如果是人类在操作黑棋，则其值为True
+    player1 =True# 如果是人类在操作白棋，则其值为True
+    player2 =True # 如果是人类在操作黑棋，则其值为True
     animate = False #flag variable for when we should animate a move
     gameover = False
 
@@ -200,6 +200,9 @@ def animateMove(move, screen, board, clock):
         endSquare = pygame.Rect(move.endcolumn*PieceSIZE, move.endrow*PieceSIZE, PieceSIZE, PieceSIZE)
         pygame.draw.rect(screen,color,endSquare)
         if move.pieceend != '--':
+            if move.isEnpassantMove:
+                enPassantRow = move.endrow + 1 if move.pieceend[0] =="b" else move.endrow -1
+                endSquare = pygame.Rect(move.endcolumn * PieceSIZE, enPassantRow * PieceSIZE, PieceSIZE, PieceSIZE)
             screen.blit(img[move.pieceend],endSquare)
         screen.blit(img[move.piecestart], pygame.Rect(c * PieceSIZE, r * PieceSIZE, PieceSIZE, PieceSIZE))
         pygame.display.flip()
