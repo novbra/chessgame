@@ -3,6 +3,8 @@
 """
 import pygame
 import Chessbasic, AI
+# 线程
+from multiprocessing import Process, Queue
 
 # 全局变量
 HEIGHT = 960
@@ -38,8 +40,11 @@ def main():
     movemade = False # 判断是否发生合法移动
     selected = ()  # 存储被选中的方块（row，col）
     clicked = []  # 存储用户点击的方块[(4,2),(5,3)]
-    player1 =False# 如果是人类在操作白棋，则其值为True
+    player1 =True# 如果是人类在操作白棋，则其值为True
     player2 =False# 如果是人类在操作黑棋，则其值为True
+    AIThinking = False
+    moveFinderProcess = None
+    moveUndone =False
     animate = False #flag variable for when we should animate a move
     gameover = False
     scroll_offset = 0  # 初始化滚动偏移量
@@ -80,7 +85,8 @@ def main():
                     movemade = True
                     animate = False
                     gameover = False
-                if not gameover and humanturn:
+                if not gameover:
+                    location = pygame.mouse.get_pos()
                     row = location[1]//PieceSIZE  # 位置整除8，获得点击的是第几块的数据
                     column = location[0]//PieceSIZE
                     # selected代表当前用户点击的方块的位置，clicked代表历史点击的方块的位置的的集合
@@ -90,7 +96,7 @@ def main():
                     else:
                         selected = (row, column)  # 点击了不同的方块，将方块的数据存入clicked中
                         clicked.append(selected)
-                    if len(clicked) == 2 : # 当clicked中存在两个不同的位置时，即将发生棋子的移动
+                    if len(clicked) == 2 and humanturn : # 当clicked中存在两个不同的位置时，即将发生棋子的移动
                         move = Chessbasic.Move(clicked[0], clicked[1], gamestate.board)
                         print(move.getChess())
                         for i in range(len(validmoves)):
@@ -115,11 +121,19 @@ def main():
                         gamestate.Pieceundo()
                         movemade = True
                         gameover = False
+                        if AIThinking:
+                            moveFinderProcess.terminate()
+                            AIThinking = False
+                        moveUndone = True
                     else:
                         animate = False
                         gamestate.Pieceundo()
                         movemade = True
                         gameover = False
+                        if AIThinking:
+                            moveFinderProcess.terminate()
+                            AIThinking = False
+                        moveUndone = True
                 if event.key == pygame.K_r :# 按下r键，复原棋盘
                     gamestate = Chessbasic.GameState()
                     validmoves = gamestate.Getvalidmove()
@@ -128,18 +142,33 @@ def main():
                     movemade = True
                     animate = False
                     gameover =False
+                    if AIThinking:
+                        moveFinderProcess.terminate()
+                        AIThinking = False
+                    moveUndone = True
 
 
 
 
         #AI 移动
-        if not gameover and not humanturn:
-            AImove = AI.findminmaxmove(gamestate,validmoves)
-            if AImove is None:
-                AImove = AI.findrandommove(validmoves)
-            gamestate.Piecemove(AImove)
-            movemade = True
-            animate = True
+        if not gameover and not humanturn and not moveUndone:
+            if not AIThinking:
+                AIThinking = True
+                print("thinking")
+                returnQuene = Queue()
+                # 在线程之间传输数据
+                moveFinderProcess = Process(target=AI.findminmaxmove, args=(gamestate, validmoves, returnQuene))
+                moveFinderProcess.start()
+                # 调用findminmaxmove（gs.validMoves,returnQuene）
+            if not moveFinderProcess.is_alive():
+                print("done thinking")
+                AImove = returnQuene.get()
+                if AImove is None:
+                    AImove = AI.findrandommove(validmoves)
+                gamestate.Piecemove(AImove)
+                movemade = True
+                animate = True
+                AIThinking = False
 
 
 
@@ -152,6 +181,7 @@ def main():
             validmoves = gamestate.Getvalidmove()
             movemade = False
             animate = True
+            moveUndone = False
 
         keys = pygame.key.get_pressed()
         if keys[pygame.K_a]:

@@ -151,15 +151,16 @@ def findgreedymove(gamestate,validmoves):
     return bestmove
 
 # 调用minmax或者negamax或者αβ优化negamax
-def findminmaxmove(gamestate,validmoves):
+def findminmaxmove(gamestate,validmoves, returnQuene):
     global nextmove,counter
     nextmove = None
+    random.shuffle(validmoves)
     counter = 0 #记录调用了多少次的算法函数
     # minmaxmove(gamestate,validmoves,DEPTH,gamestate.IswTomove)
     # negamaxmove(gamestate,validmoves,DEPTH, 1 if gamestate.IswTomove else -1)
     negamaxalphabetamove(gamestate, validmoves,-checkmate, checkmate,  DEPTH, 1 if gamestate.IswTomove else -1)
     print(counter)
-    return nextmove
+    returnQuene.put(nextmove)
 
 #递归版贪婪
 def minmaxmove(gamestate, validmoves, depth, wTomove):
