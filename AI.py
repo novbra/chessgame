@@ -67,7 +67,7 @@ piecePositionScores = {"n": knightScore, 'q': queenScore, "b": bishopScore, "r":
 
 checkmate = 999
 stalemate = 0
-DEPTH    = 2 #控制递归版贪婪的递归深度
+DEPTH    = 3 #控制递归版贪婪的递归深度
 
 # 评分函数
 def scoreMaterial(board):
