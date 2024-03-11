@@ -12,24 +12,37 @@ class GameState():
             ["--", "--", "--", "--", "--", "--", "--", "--"],
             ["--", "--", "--", "--", "--", "--", "--", "--"],
             ["wp", "wp", "wp", "wp", "wp", "wp", "wp", "wp"],
-            ["wr", "wn", "wb", "wq", "wk", "wb", "wn", "wr"]]
+            ["wr", "wn", "wb", "wq", "wk", "wb", "wn", "wr"]]#二维数组来存放棋盘初始摆放数据
+
+        #Pawn 兵卒
+        #Rook 車
+        #Bishop 相(主教)
+        #Knight 马(骑士)
         self.moveFunctions = {'p': self.getPawnMoves, 'r': self.getRookMoves,
                               'n': self.getKnightMoves, 'q': self.getQueenMoves,
                               'k': self.getKingMoves, 'b': self.getBishopMoves}
-        self.IswTomove = True  #判断谁输谁赢
+
+        self.IswTomove = True  #判断谁输谁赢  IswTomove 表示是否白棋回合
+
+
         self.movelog = []
+
         self.whiteKingLocation = (7, 4)
+
         self.blackKingLocation = (0, 4)
+
         self.checkMate = False #被将的状态
         self.staleMate = False #僵局的状态
-        self.enpassantPossible=()
+
+        self.enpassantPossible=() #吃过路兵
+
         self.currentCastlingRight =CastleRights(True,True,True,True)
         self.castleRightsLog = [CastleRights(self.currentCastlingRight.wks,self.currentCastlingRight.bks,
                                              self.currentCastlingRight.wqs,self.currentCastlingRight.bqs)]
 
 
 
-#移动棋子
+#移动棋子, 执行后自动执行回合轮换
     def Piecemove(self, move):
         self.board[move.startrow][move.startcolumn] = "--"  #  把初始的方块设为空
         self.board[move.endrow][move.endcolumn] = move.piecestart  #  把棋子转移到选定的方块上
@@ -37,7 +50,7 @@ class GameState():
         self.movelog.append(move)  #  在日志中增加移动记录
         if move.piecestart =="wk":
             self.whiteKingLocation = (move.endrow, move.endcolumn)
-            print(self.whiteKingLocation)
+            # print(self.whiteKingLocation)
         elif move.piecestart =="bk":
             self.blackKingLocation = (move.endrow, move.endcolumn)#更新双王位置
         #pawn promotion小兵晋升
@@ -69,13 +82,15 @@ class GameState():
                                              self.currentCastlingRight.wqs, self.currentCastlingRight.bqs))
 
 
-    #撤回一步
+    #撤回一步, 也会自动轮换
     def Pieceundo(self):
         if len(self.movelog) != 0:  #只要日志里有记录
             move = self.movelog.pop()   #弹出最后一个记录并赋给move
-            self.board[move.startrow][move.startcolumn] =move.piecestart  #把棋子的位置复原
-            self.board[move.endrow][move.endcolumn] = move.pieceend
+            self.board[move.startrow][move.startcolumn] =move.piecestart  #把start格子复原
+            self.board[move.endrow][move.endcolumn] = move.pieceend #把end格子复原
+
             self.IswTomove = not self.IswTomove  # 回合轮换
+
             if move.piecestart == "wk":
                 self.whiteKingLocation = (move.startrow, move.startcolumn)
             elif move.piecestart == "bk":
@@ -124,15 +139,19 @@ class GameState():
 
 
 # 获取合法移动集合
-    def Getvalidmove(self):
+    def Getvalidmove(self, isDeduce:bool):
         tempEnpassantPossible = self.enpassantPossible
         tempCastleRights=CastleRights(self.currentCastlingRight.wks,self.currentCastlingRight.bks,
                                       self.currentCastlingRight.wqs,self.currentCastlingRight.bqs)#copy the current castling rights
+
         moves = self.Get_all_possible_moves()#生成所有可能的步
+
         if self.IswTomove:
             self.getCastleMoves(self.whiteKingLocation[0],self.whiteKingLocation[1],moves)
         else:
             self.getCastleMoves(self.blackKingLocation[0],self.blackKingLocation[1],moves)
+
+
         for i in range(len(moves)-1, -1, -1):#倒序
             self.Piecemove(moves[i])
             self.IswTomove = not self.IswTomove
@@ -141,14 +160,20 @@ class GameState():
                 moves.remove(moves[i])
             self.IswTomove = not self.IswTomove
             self.Pieceundo()
-        if len(moves) == 0: #检测被将的两种状态
-            if self.inCheck():
-                self.checkMate = True
-            else:
-                self.staleMate = True
+
+        if not isDeduce:
+            #游戏结束判断(将军以及僵局), 在搜索树推演时不可执行
+            if len(moves) == 0: #检测被将的两种状态
+                if self.inCheck():
+                    self.checkMate = True
+                else:
+                    self.staleMate = True
+
         self.enpassantPossible = tempEnpassantPossible
         self.currentCastlingRight=tempCastleRights
         return moves
+
+
     #是否被将
     def inCheck(self):
         if self.IswTomove:
@@ -342,6 +367,8 @@ class Move():
         self.moveID = self.startrow*1000+self.startcolumn*100+self.endrow*10+self.endcolumn  # 给每次移动建立一个唯一ID
         # print(self.moveID)
 
+    def __hash__(self):
+        return hash(str(self.startrow)+","+str(self.startcolumn)+str(self.endrow)+","+str(self.endcolumn))
     # 重写equal方法
     def __eq__(self, other):
         if isinstance(other, Move):
