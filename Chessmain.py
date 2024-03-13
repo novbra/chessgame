@@ -194,7 +194,7 @@ def  main_game_loop():
                             moveFinderProcess.terminate()
                             AIThinking = False
                         moveUndone = True
-                    if event.key == pygame.K_r:  # 按下r键，复原棋盘
+                elif event.key == pygame.K_r:  # 按下r键，复原棋盘
                         gamestate = Chessbasic.GameState()
                         validmoves = gamestate.Getvalidmove()
                         selected = ()
