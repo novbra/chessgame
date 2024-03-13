@@ -2,6 +2,7 @@
 主界面，处理输入以及显示当前游戏状态
 """
 import pygame
+import pygame_menu
 import Chessbasic, AI
 # 线程
 from multiprocessing import Process, Queue
@@ -15,8 +16,29 @@ SCROLLBAR_WIDTH = 10
 SCROLL_SPEED = 20
 PieceSIZE = HEIGHT // 8  # 棋子尺寸
 img = {}  # 棋子图片集合
+menu = None
 
 pygame.init()
+# 定义菜单中的函数
+def start_the_game():
+    global gamestate, validmoves, movemade, animate, gameover, running, menu
+    # 初始化游戏状态
+    gamestate = Chessbasic.GameState()
+    # 获取所有有效的移动
+    validmoves = gamestate.Getvalidmove()
+    # 设置移动是否已经发生的标志
+    movemade = False
+    # 设置是否应该显示动画的标志
+    animate = False
+    # 设置游戏是否结束的标志
+    gameover = False
+    # 设置游戏运行状态为True，开始游戏循环
+    running = True
+    if menu is not None:  # 在调用之前检查menu是否已经被赋值
+     # 关闭菜单
+      menu.disable()
+      menu.full_reset()  # 重置菜单状态，确保菜单不会阻止游戏界面的渲染
+
 
 # 初始化图片,一个循环把所有的图片加载进img这个集合里
 def Loadimages():
@@ -25,7 +47,8 @@ def Loadimages():
         img[piece] = pygame.transform.scale(pygame.image.load("image/" + piece + ".png"),(PieceSIZE,PieceSIZE))
 
 # 游戏初始化
-def main():
+def  main_game_loop():
+    global menu,running
     # 创建窗口
     screen = pygame.display.set_mode((WIDTH + MOVELOGWIDTH,HEIGHT ))
     # 设置标题
@@ -51,6 +74,14 @@ def main():
     button1 = Button(WIDTH + 175, HEIGHT // 2 + 100, 100, 50, "Undo")
     button2 = Button(WIDTH + 175, HEIGHT // 2 + 200, 100, 50, "Reset")
     running = True
+    # 显示菜单
+    # 创建菜单
+    menu = pygame_menu.Menu('welcome', WIDTH + MOVELOGWIDTH, HEIGHT,
+                            theme=pygame_menu.themes.THEME_BLUE)
+    menu.add.text_input('name :', default='MN Master')
+    menu.add.button('play', start_the_game)
+    menu.add.button('exit', pygame_menu.events.EXIT)
+    menu.mainloop(screen)
 
     # 游戏主循环
     while running:
@@ -205,6 +236,8 @@ def main():
 
 
         pygame.display.flip()
+        # 游戏结束后可以再次显示菜单或退出
+    pygame.quit()
 
 '''
 highlight square selected and move for piece selected 突出显示选定的方块并为选定的块移动
@@ -379,4 +412,5 @@ class Button:
 
 # 运行
 if __name__ == '__main__':
-    main()
+
+    main_game_loop()
