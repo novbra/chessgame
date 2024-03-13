@@ -4,12 +4,16 @@
 import pygame
 import pygame_menu
 import Chessbasic, AI
+import sys
 # 线程
 from multiprocessing import Process, Queue
-
+# 定义颜色
+WHITE = (255, 255, 255)
+GREY = (200, 200, 200)
+BLACK = (0, 0, 0)
 # 全局变量
-HEIGHT = 960
-WIDTH = 960
+HEIGHT = 930
+WIDTH = 930
 MOVELOGHEIGHT = HEIGHT//2
 MOVELOGWIDTH = 450
 SCROLLBAR_WIDTH = 10
@@ -19,7 +23,37 @@ img = {}  # 棋子图片集合
 menu = None
 
 pygame.init()
-# 定义菜单中的函数
+# 菜单项
+menu_items = {'difficulty': ['Simple', 'ordinary','difficult'],
+              'set up': ['User', 'quit']
+              }
+# 当前激活的菜单
+active_menu = None
+# 绘制菜单栏
+def draw_menu_bar(screen, active_menu, menu_items):
+    font = pygame.font.Font(None, 30)
+    background_color = (255, 255, 255)  # 白色背景，RGB格式
+    menu_height = font.get_height()
+    for index, (key, items) in enumerate(menu_items.items()):
+        # 绘制菜单项背景
+        menu_item_background = pygame.Rect(index * 200, 0, 200, menu_height)
+        pygame.draw.rect(screen, background_color, menu_item_background)
+
+        # 绘制菜单项文字
+        text_surface = font.render(key, True, (0, 0, 0))  # 黑色文字
+        screen.blit(text_surface, (index * 200, 0))
+
+        if active_menu == key:
+            for i, item in enumerate(items):
+                # 绘制下拉菜单背景
+                dropdown_background = pygame.Rect(index * 200, (i + 1) * menu_height, 200, menu_height)
+                pygame.draw.rect(screen, background_color, dropdown_background)
+
+                # 绘制下拉菜单项文字
+                item_surface = font.render(item, True, (0, 0, 0))  # 黑色文字
+                screen.blit(item_surface, (index * 200, (i + 1) * menu_height))
+
+# 定义开始菜单中的函数
 def start_the_game():
     global gamestate, validmoves, movemade, animate, gameover, running, menu
     # 初始化游戏状态
@@ -48,7 +82,8 @@ def Loadimages():
 
 # 游戏初始化
 def  main_game_loop():
-    global menu,running
+    global menu,running, active_menu
+    active_menu = None  # 在这里初始化active_menu变量
     # 创建窗口
     screen = pygame.display.set_mode((WIDTH + MOVELOGWIDTH,HEIGHT ))
     # 设置标题
@@ -85,99 +120,92 @@ def  main_game_loop():
 
     # 游戏主循环
     while running:
-        humanturn = (gamestate.IswTomove and player1) or (not gamestate.IswTomove and player2)# 是否是人类的回合
-        for event in pygame.event.get():
-
+        humanturn = (gamestate.IswTomove and player1) or (not gamestate.IswTomove and player2)  # 是否是人类的回合
+        events = pygame.event.get()
+        for event in events:
             if event.type == pygame.QUIT:
                 running = False
-            #  鼠标点击事件
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                location = pygame.mouse.get_pos()  # 捕获鼠标点击位置
-                if event.pos[0] >= WIDTH + 175 and event.pos[0] <= WIDTH + 275 and event.pos[1] >= HEIGHT // 2 + 100 and \
-                        event.pos[1] <= HEIGHT // 2 + 150:
-                    # 如果鼠标点击在按钮的区域内，执行按钮的动作
+                if event.button == 1:  # 如果是左键点击
+                    mouse_x, mouse_y = event.pos
+                    menu_width = 200  # 设置菜单项的宽度
+                    for index, (key, items) in enumerate(menu_items.items()):
+                        # 检查鼠标点击是否在菜单项的水平范围内
+                        if index * menu_width < mouse_x < (index + 1) * menu_width:
+                            # 检查鼠标点击是否在菜单项的垂直范围内
+                            if 0 < mouse_y < 20:
+                                active_menu = key if active_menu != key else None
+                                break
+                    if WIDTH + 175 < mouse_x < WIDTH + 275:
+                        if HEIGHT // 2 + 100 < mouse_y < HEIGHT // 2 + 150:
+                            animate = False
+                            gamestate.Pieceundo()
+                            movemade = True
+                            gameover = False
+                            if not (player1 and player2):
+                                gamestate.Pieceundo()
+                        elif HEIGHT // 2 + 200 < mouse_y < HEIGHT // 2 + 250:
+                            gamestate = Chessbasic.GameState()
+                            validmoves = gamestate.Getvalidmove()
+                            selected = ()
+                            clicked = []
+                            movemade = True
+                            animate = False
+                            gameover = False
+                    elif mouse_x < WIDTH and not gameover:
+                        row = mouse_y // PieceSIZE
+                        column = mouse_x // PieceSIZE
+                        if selected == (row, column) or column >= 8:
+                            selected = ()
+                            clicked = []
+                        else:
+                            selected = (row, column)
+                            clicked.append(selected)
+                        if len(clicked) == 2 and humanturn:
+                            move = Chessbasic.Move(clicked[0], clicked[1], gamestate.board)
+                            print(move.getChess())
+                            if move in validmoves:
+                                gamestate.Piecemove(move)
+                                movemade = True
+                                animate = True
+                                selected = ()
+                                clicked = []
+                            if not movemade:
+                                clicked = [selected]
+
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_z:
                     if (player1 == True and player2 == False) or (player2 == True and player1 == False):
                         animate = False
                         gamestate.Pieceundo()
                         gamestate.Pieceundo()
                         movemade = True
                         gameover = False
+                        if AIThinking:
+                            moveFinderProcess.terminate()
+                            AIThinking = False
+                        moveUndone = True
                     else:
                         animate = False
                         gamestate.Pieceundo()
                         movemade = True
                         gameover = False
-                if event.pos[0] >= WIDTH + 175 and event.pos[0] <= WIDTH + 275 and event.pos[1] >= HEIGHT // 2 + 200 and \
-                        event.pos[1] <= HEIGHT // 2 + 250:
-                    gamestate = Chessbasic.GameState()
-                    validmoves = gamestate.Getvalidmove()
-                    selected = ()
-                    clicked = []
-                    movemade = True
-                    animate = False
-                    gameover = False
-                if not gameover:
-                    location = pygame.mouse.get_pos()
-                    row = location[1]//PieceSIZE  # 位置整除8，获得点击的是第几块的数据
-                    column = location[0]//PieceSIZE
-                    # selected代表当前用户点击的方块的位置，clicked代表历史点击的方块的位置的的集合
-                    if selected == (row, column) or column >=8 :  # 点击了相同的方块
-                        selected = ()  # 清空（取消）
+                        if AIThinking:
+                            moveFinderProcess.terminate()
+                            AIThinking = False
+                        moveUndone = True
+                    if event.key == pygame.K_r:  # 按下r键，复原棋盘
+                        gamestate = Chessbasic.GameState()
+                        validmoves = gamestate.Getvalidmove()
+                        selected = ()
                         clicked = []
-                    else:
-                        selected = (row, column)  # 点击了不同的方块，将方块的数据存入clicked中
-                        clicked.append(selected)
-                    if len(clicked) == 2 and humanturn : # 当clicked中存在两个不同的位置时，即将发生棋子的移动
-                        move = Chessbasic.Move(clicked[0], clicked[1], gamestate.board)
-                        print(move.getChess())
-                        for i in range(len(validmoves)):
-                            if move == validmoves[i]:  #  如果该位置属于合法落子位置集合
-                                # animateMove(validmoves[i], screen, gamestate.board, clock) #移动轨迹
-                                gamestate.Piecemove(validmoves[i])  #  移动棋子
-                                movemade = True     #  表示发生了移动
-                                animate = True     #开启动画
-                                selected = ()  # 移动完棋子，清空记录
-                                clicked = []
-                        if not movemade:
-                            clicked =[selected]  #把当前的点击次数设置为选择当前方块
-
-
-            # 键盘事件
-            elif event.type == pygame.KEYDOWN:
-                
-                if event.key == pygame.K_z :# 按下Z键，撤回一步
-                    if (player1==True and player2 ==False)or (player2 ==True and player1==False):
-                        animate = False
-                        gamestate.Pieceundo()
-                        gamestate.Pieceundo()
                         movemade = True
+                        animate = False
                         gameover = False
                         if AIThinking:
                             moveFinderProcess.terminate()
                             AIThinking = False
                         moveUndone = True
-                    else:
-                        animate = False
-                        gamestate.Pieceundo()
-                        movemade = True
-                        gameover = False
-                        if AIThinking:
-                            moveFinderProcess.terminate()
-                            AIThinking = False
-                        moveUndone = True
-                if event.key == pygame.K_r :# 按下r键，复原棋盘
-                    gamestate = Chessbasic.GameState()
-                    validmoves = gamestate.Getvalidmove()
-                    selected = ()
-                    clicked = []
-                    movemade = True
-                    animate = False
-                    gameover =False
-                    if AIThinking:
-                        moveFinderProcess.terminate()
-                        AIThinking = False
-                    moveUndone = True
-
 
 
 
@@ -238,6 +266,7 @@ def  main_game_loop():
         pygame.display.flip()
         # 游戏结束后可以再次显示菜单或退出
     pygame.quit()
+    sys.exit()
 
 '''
 highlight square selected and move for piece selected 突出显示选定的方块并为选定的块移动
@@ -251,20 +280,27 @@ def highlightSquares(screen,gamestate,validmoves,sqSelected):
             s=pygame.Surface((PieceSIZE,PieceSIZE))
             s.set_alpha(100)
             s.fill(pygame.Color('blue'))
-            screen.blit(s,(column * PieceSIZE, row * PieceSIZE))
+            screen.blit(s,(column * PieceSIZE, row * PieceSIZE+20))
             #highlight moves from that square
             s.fill(pygame.Color('green'))
             for move in validmoves:
                 if move.startrow==row and move.startcolumn==column:
-                    screen.blit(s,(move.endcolumn*PieceSIZE,move.endrow*PieceSIZE))
+                    screen.blit(s,(move.endcolumn*PieceSIZE,move.endrow*PieceSIZE+20))
 
-
+def draw_dropdown_menu(screen, background_color):
+    # 定义下拉菜单栏的位置和大小
+    menu_rect = pygame.Rect(0,0,WIDTH, 30)
+    # 使用背景色填充菜单栏区域
+    pygame.draw.rect(screen, background_color, menu_rect)
 
 # 绘制游戏
 def Drawgame(screen, gamestate,validmoves,sqSelected,movelogfont,scroll_offset,button1,button2):
+    background_color = "white"  # 红色背景
+    draw_dropdown_menu(screen, background_color)
     Drawboard(screen)
     highlightSquares(screen,gamestate,validmoves,sqSelected)
     Drawpieces(screen, gamestate.board)
+    draw_menu_bar(screen, active_menu,menu_items)  # 首先绘制菜单栏
     Drawmovelog(screen, gamestate,movelogfont,scroll_offset)
     Drawbuttonpart(screen)
     button1.draw(screen)
@@ -276,14 +312,14 @@ def Drawboard(screen):
     for row in range(8):
         for column in range(8):
             color = colors[(row + column) % 2]
-            pygame.draw.rect(screen, color, pygame.Rect(column * PieceSIZE, row * PieceSIZE, PieceSIZE, PieceSIZE))
+            pygame.draw.rect(screen, color, pygame.Rect(column * PieceSIZE, row * PieceSIZE+20, PieceSIZE, PieceSIZE))
 # 绘制棋子
 def Drawpieces(screen, board):
     for row in range(8):
         for column in range(8):
             piece = board[row][column]
             if piece != "--":
-                screen.blit(img[piece], pygame.Rect(column * PieceSIZE, row * PieceSIZE, PieceSIZE, PieceSIZE))
+                screen.blit(img[piece], pygame.Rect(column * PieceSIZE, row * PieceSIZE+20, PieceSIZE, PieceSIZE))
 
 def Drawmovelog(screen, gamestate, font, scroll_offset):
     # 定义移动日志的矩形区域
@@ -372,14 +408,14 @@ def animateMove(move, screen, board, clock):
         Drawpieces(screen, board)
         #erase the piece moved from its ending square
         color = colors[(move.endrow + move.endcolumn)% 2]
-        endSquare = pygame.Rect(move.endcolumn*PieceSIZE, move.endrow*PieceSIZE, PieceSIZE, PieceSIZE)
+        endSquare = pygame.Rect(move.endcolumn*PieceSIZE, move.endrow*PieceSIZE+20, PieceSIZE, PieceSIZE)
         pygame.draw.rect(screen,color,endSquare)
         if move.pieceend != '--':
             if move.isEnpassantMove:
                 enPassantRow = move.endrow + 1 if move.pieceend[0] =="b" else move.endrow -1
-                endSquare = pygame.Rect(move.endcolumn * PieceSIZE, enPassantRow * PieceSIZE, PieceSIZE, PieceSIZE)
+                endSquare = pygame.Rect(move.endcolumn * PieceSIZE, enPassantRow * PieceSIZE+20, PieceSIZE, PieceSIZE)
             screen.blit(img[move.pieceend],endSquare)
-        screen.blit(img[move.piecestart], pygame.Rect(c * PieceSIZE, r * PieceSIZE, PieceSIZE, PieceSIZE))
+        screen.blit(img[move.piecestart], pygame.Rect(c * PieceSIZE, r * PieceSIZE+20, PieceSIZE, PieceSIZE))
         pygame.display.flip()
         clock.tick(60)
 
