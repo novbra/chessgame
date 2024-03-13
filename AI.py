@@ -144,7 +144,7 @@ piecePositionScores = {"wp": POSITION_WHITE_PAWN,
                        }
 
 # 静态评估函数 @Yan 返回白棋棋力-黑棋棋力
-def static_evaluate(board):
+def dynamic_evaluate(board,isWhite:bool):
     white_score = 0
     black_score = 0
     f = 0
@@ -169,9 +169,12 @@ def static_evaluate(board):
         i+=1
                 # 灵活性评估
                 # 其他
-    f = white_score - black_score
+    #动态平衡
+    # a = white_score/(white_score+black_score) if isWhite else black_score/(white_score+black_score)
+    # f = (1.5-a)*white_score-black_score if isWhite else (1.5-a)*black_score-white_score
+    # print(f)
+    f=white_score-black_score
     return f
-
 
 # 随机
 def randommove(validmoves):
@@ -198,10 +201,19 @@ def make_game_tree(gamestate, depth,player_code:int) -> GameTree:
 # dfs是make_game_tree 内置函数 评估函数默认为 白棋-黑棋 player_code,白棋为1，黑棋为-1
 def dfs(gamestate, current_node: Node, depth: int,player_code:int)->int:
     gamestate.node_count+=1
+
+    isWhite = False
+    if (player_code == 1):
+        isWhite = True
+    else:
+        isWhite = False
+
     if current_node.depth == depth:
         # Terminal
         # 计算底层叶子结点局面价值
-        current_node.val = player_code*static_evaluate(gamestate.board)
+
+
+        current_node.val = player_code*dynamic_evaluate(gamestate.board,isWhite)
         if current_node.depth%2: #黑棋为负
             current_node.val=-current_node.val #使用negamax算法，需要对敌方叶子结点取负
     else:
@@ -209,13 +221,22 @@ def dfs(gamestate, current_node: Node, depth: int,player_code:int)->int:
         # print(current_node, current_node.depth, len(moves), "个落子可能")
         if len(moves)==0:
             #计算非底层叶子结点局面价值
-            current_node.val = player_code*static_evaluate(gamestate.board)
+            current_node.val = player_code*dynamic_evaluate(gamestate.board,isWhite)
             if current_node.depth % 2:  # 敌方
-                print("黑方被将死" if player_code == 1 else "白方被将死")
+                current_node.val = current_node.val
+                print("黑方被将死" if isWhite else "白方被将死")
+                if isWhite:
+                    current_node.val+=9999
+                else:
+                    current_node.val-=9999
             else:  # 我方
                 # 使用negamax算法，需要对我方叶子节点执行取负
                 current_node.val = -current_node.val
-                print("白方被将死" if player_code==1 else "黑方被将死")
+                print("白方被将死" if isWhite else "黑方被将死")
+                if isWhite:
+                    current_node.val-=9999
+                else:
+                    current_node.val+=9999
         else:
             #根据历史库中的价值表对Move的进行价值排序，价值越高排在前面，越优先遍历，让剪枝发生的更快
             for i in range(len(moves)):
