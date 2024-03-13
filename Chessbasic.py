@@ -1,6 +1,9 @@
 """
 存储当前游戏状态，日志，基本方法，规则
 """
+import structure
+
+
 class GameState():
     def __init__(self):
         # 8*8的棋盘，b代表黑，w代表白
@@ -27,7 +30,7 @@ class GameState():
         self.currentCastlingRight =CastleRights(True,True,True,True)
         self.castleRightsLog = [CastleRights(self.currentCastlingRight.wks,self.currentCastlingRight.bks,
                                              self.currentCastlingRight.wqs,self.currentCastlingRight.bqs)]
-
+        self.history=structure.HistoryScore()
 
 
 #移动棋子
@@ -360,6 +363,7 @@ class Move():
 
         self.moveID = self.startrow*1000+self.startcolumn*100+self.endrow*10+self.endcolumn  # 给每次移动建立一个唯一ID
         # print(self.moveID)
+        self.h_score=-9999
 
     # 重写equal方法
     def __eq__(self, other):

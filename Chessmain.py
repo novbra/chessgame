@@ -217,7 +217,7 @@ def highlightSquares(screen,gamestate,validmoves,sqSelected):
             #highlight selected square
             s=pygame.Surface((PieceSIZE,PieceSIZE))
             s.set_alpha(100)
-            s.fill(pygame.Color('yellow'))
+            s.fill(pygame.Color('blue'))
             screen.blit(s,(column * PieceSIZE, row * PieceSIZE))
             #highlight moves from that square
             s.fill(pygame.Color('green'))

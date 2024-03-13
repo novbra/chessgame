@@ -4,10 +4,10 @@
 2.贪婪算法（非递归、极小化极大、negamax、ab剪枝）
 """
 import random
-
+import time
 
 pieceScore = {"k":0,"q":10,"r":8,"b":5,"n":5,"p":1}
-# 评估函数
+# 评估函数：兵种位置得分
 knightScore = [[1, 1, 1, 1, 1, 1, 1, 1],
               [1, 2, 2, 2, 2, 2, 2, 1],
               [1, 2, 3, 3, 3, 3, 2, 1],
@@ -67,7 +67,7 @@ piecePositionScores = {"n": knightScore, 'q': queenScore, "b": bishopScore, "r":
 
 checkmate = 999
 stalemate = 0
-DEPTH    = 2 #控制递归版贪婪的递归深度
+DEPTH    = 3 #控制递归版贪婪的递归深度
 
 # 评分函数
 def scoreMaterial(board):
@@ -155,11 +155,14 @@ def findminmaxmove(gamestate,validmoves, returnQuene):
     global nextmove,counter
     nextmove = None
     random.shuffle(validmoves)
+    start_time = time.time()
     counter = 0 #记录调用了多少次的算法函数
     # minmaxmove(gamestate,validmoves,DEPTH,gamestate.IswTomove)
     # negamaxmove(gamestate,validmoves,DEPTH, 1 if gamestate.IswTomove else -1)
     negamaxalphabetamove(gamestate, validmoves,-checkmate, checkmate,  DEPTH, 1 if gamestate.IswTomove else -1)
-    print(counter)
+    end_time = time.time()
+    print("用时", end_time - start_time, "算法调用次数", counter)
+
     returnQuene.put(nextmove)
 
 #递归版贪婪
@@ -196,7 +199,7 @@ def minmaxmove(gamestate, validmoves, depth, wTomove):
 
 
 # negamax
-def negamaxmove(gamestate, validmoves, depth, turn):
+def negamaxmove(gamestate, validmoves, depth, turn): #此方法为depth降序
     random.shuffle(validmoves) #打乱可移动的位置集合
     global nextmove,counter
     counter+=1
@@ -224,18 +227,35 @@ def negamaxalphabetamove(gamestate, validmoves,alpha,beta, depth, turn):
         return turn * scoreBoard(gamestate)
 
     maxscore = -checkmate
+
+    #对validmoves进行历史排序
+
+    best_move=None
     for move in validmoves:
         gamestate.Piecemove(move)
         nextmoves = gamestate.Getvalidmove()
-        score = -negamaxalphabetamove(gamestate, nextmoves,-beta,-alpha, depth - 1, -turn)
-        if score > maxscore:
-            maxscore = score
-            if depth == DEPTH:
-                nextmove = move
-                print(move,score)
-        gamestate.Pieceundo()
-        if maxscore>alpha:# 剪枝开始，alpha表示当前搜索路径上已知的最佳分数，beta表示对手的最佳分数。如果某个节点的分数超出了这个范围，就可以停止搜索该节点的子树。
-            alpha =maxscore
-        if alpha>=beta:# 此处是因为alpha是从-999开始的，而beta是从999开始的
-            break
+
+        if not len(nextmoves)==0:
+            # 根据历史库中的价值表对Move的进行价值排序，价值越高排在前面，越优先遍历，让剪枝发生的更快
+            for i in range(len(nextmoves)):
+                nextmoves[i].score = gamestate.history.get(nextmoves[i])
+            #对nextmoves排序
+            nextmoves.sort(key=lambda item: item.h_score, reverse=False)
+            # 暂定第一步为好棋，然后根据搜索再确认好棋是哪部
+            best_move = nextmoves[0]
+            score = -negamaxalphabetamove(gamestate, nextmoves,-beta,-alpha, depth - 1, -turn)
+            if score > maxscore:
+                maxscore = score
+                best_move= move #@Yan 新增
+                if depth == DEPTH:
+                    nextmove = move
+                    print(move,score)
+            gamestate.Pieceundo()
+            if maxscore>alpha:# 剪枝开始，alpha表示当前搜索路径上已知的最佳分数，beta表示对手的最佳分数。如果某个节点的分数超出了这个范围，就可以停止搜索该节点的子树。
+                alpha =maxscore
+            if alpha>=beta:# 此处是因为alpha是从-999开始的，而beta是从999开始的
+                break
+    #循环结束后，将本结点最佳下步记录到历史库中
+    if not best_move==None:
+        gamestate.history.add(best_move,depth)
     return maxscore
