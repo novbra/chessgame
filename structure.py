@@ -3,8 +3,10 @@ import heapq
 
 class Node:
 
-    def __init__(self, parent, val: int, move, depth: int) -> None:
+    def __init__(self, parent, alpha:int,beta:int,val: int, move, depth: int) -> None:
         self.parent = parent
+        self.alpha=alpha
+        self.beta=beta
         self.val = val
         self.move = move
         self.depth = depth
@@ -77,3 +79,18 @@ class PriorityQueue:
 
     def pop(self):
         return heapq.heappop(self.queue)[-1]
+
+class HistoryScore:
+    def __init__(self):
+        self.reset()
+    def reset(self):
+        self.history_score=[[0 for x in range(64)] for y in range(64)]# [0 for x in range(64)]生成了一个含有64个0的列表
+    def add(self,move,depth):
+        i=move.startrow*8+move.startcolumn
+        j=move.endrow*8+move.endcolumn
+        self.history_score[i][j]+= 2 << depth# 根据该结点搜索深度计算其价值
+        #这里加的权值是J.Schaeffer建议的2^depth，离叶子节点越近则越小，可以理解为越上面的节点是经过更多次计算挑选的，所以价值越大（不一定准确）
+    def get(self,move):
+        i = move.startrow * 8 + move.startcolumn
+        j = move.endrow * 8 + move.endcolumn
+        return self.history_score[i][j]

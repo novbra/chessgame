@@ -50,7 +50,7 @@ def main():
 
     animate = False #flag variable for when we should animate a move
 
-    DEFAULT_SEARCH_DEPTH=2 #默认搜索树搜索到第4层
+    DEFAULT_SEARCH_DEPTH=4 #默认搜索树搜索到第4层
 
     gameover = False
 
@@ -112,7 +112,7 @@ def main():
 
         if not gameover:
             if not humanturn: #机器轮
-                AImove = AI.test_get_best_move(gamestate,2)
+                AImove = AI.test_get_best_move(gamestate,4)
                 if AImove is None:
                     print("AI没有提供落子方案")
                     AImove = AI.randommove(validmoves)
@@ -129,17 +129,15 @@ def main():
                     tree=AI.make_game_tree(gamestate,DEFAULT_SEARCH_DEPTH,1)
                     print(gamestate.board)
                     child_list=tree.root.children
-                    child_list.sort(key=lambda item: -item.val) #按照降序来排序
-                    for child in child_list[:3]: #列表切片
-                        print("(",child.move.startrow,",",child.move.startcolumn,")","->","(",child.move.endrow,",",child.move.endcolumn,")",child.val)
-                        tips_moves[child.move]=child.val #受negamax算法影响，depth为1的结点的val就是正向的，无须取反
+                    child_list.sort(key=lambda item: item.val) #按照降序来排序，子结点val是负数，利益越大值越小，因此从小到大排序的即可
+                    for child in child_list[:1]: #列表切片
+                        print("(",child.move.startrow,",",child.move.startcolumn,")","->","(",child.move.endrow,",",child.move.endcolumn,")",-child.val)
+                        tips_moves[child.move]=-child.val #受negamax算法影响，depth为1的结点的val就是负向，需要取反
 
         if movemade : #  如果移动发生了，重新获得可落子位置
             if animate:
                 animateMove(gamestate.movelog[-1], screen, gamestate.board,clock) #移动轨迹
             validmoves = gamestate.Getvalidmove(False)
-
-
 
             movemade = False
             animate = False
@@ -252,7 +250,6 @@ def Drawgame(screen, gamestate,validmoves,sqSelected,tip_moves):
     Drawpieces(screen, gamestate.board)
     #如果是玩家轮，需要展示AI落子结果
     highlight_AI_hints(screen,gamestate,tip_moves)
-
 
 # 绘制棋盘, Drawgame的子方法
 def Drawboard(screen):

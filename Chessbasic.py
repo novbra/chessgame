@@ -1,6 +1,9 @@
 """
 存储当前游戏状态，日志，基本方法，规则
 """
+import structure
+
+
 class GameState():
     def __init__(self):
         # 8*8的棋盘，b代表黑，w代表白
@@ -23,8 +26,7 @@ class GameState():
                               'k': self.getKingMoves, 'b': self.getBishopMoves}
 
         self.IswTomove = True  #判断谁输谁赢  IswTomove 表示是否白棋回合
-
-
+        self.node_count=0 #记录遍历结点数
         self.movelog = []
 
         self.whiteKingLocation = (7, 4)
@@ -39,6 +41,8 @@ class GameState():
         self.currentCastlingRight =CastleRights(True,True,True,True)
         self.castleRightsLog = [CastleRights(self.currentCastlingRight.wks,self.currentCastlingRight.bks,
                                              self.currentCastlingRight.wqs,self.currentCastlingRight.bqs)]
+
+        self.history=structure.HistoryScore() #历史记录表 记录历史中的最佳步
 
 
 
@@ -348,6 +352,8 @@ class Move():
     colsToFiles = {v: k for k, v in filesTocols.items()}
 
     def __init__(self, start, end, board,isEnpassantMove =False,isCastleMove =False):
+        #score属性用来记录该属性的历史的得分
+        self.score=0
         #  记录开始位置和最终位置
         self.startrow = start[0]
         self.startcolumn = start[1]
