@@ -216,7 +216,7 @@ def  main_game_loop():
                 print("thinking")
                 returnQuene = Queue()
                 # 在线程之间传输数据
-                moveFinderProcess = Process(target=AI.findminmaxmove, args=(gamestate, validmoves, returnQuene))
+                moveFinderProcess = Process(target=AI.findminmaxmove, args=(gamestate, validmoves, returnQuene,AI.limittime))
                 moveFinderProcess.start()
                 # 调用findminmaxmove（gs.validMoves,returnQuene）
             if not moveFinderProcess.is_alive():

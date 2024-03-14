@@ -68,7 +68,8 @@ piecePositionScores = {"n": knightScore, 'q': queenScore, "b": bishopScore, "r":
 checkmate = 999
 stalemate = 0
 DEPTH    = 3 #控制递归版贪婪的递归深度
-
+max_depth = 5  # Set the desired maximum depth
+limittime =10
 # 评分函数
 def scoreMaterial(board):
     score = 0
@@ -151,7 +152,7 @@ def findgreedymove(gamestate,validmoves):
     return bestmove
 
 # 调用minmax或者negamax或者αβ优化negamax
-def findminmaxmove(gamestate,validmoves, returnQuene):
+def findminmaxmove(gamestate,validmoves, returnQuene,limittime):
     global nextmove,counter
     nextmove = None
     random.shuffle(validmoves)
@@ -159,7 +160,9 @@ def findminmaxmove(gamestate,validmoves, returnQuene):
     counter = 0 #记录调用了多少次的算法函数
     # minmaxmove(gamestate,validmoves,DEPTH,gamestate.IswTomove)
     # negamaxmove(gamestate,validmoves,DEPTH, 1 if gamestate.IswTomove else -1)
-    negamaxalphabetamove(gamestate, validmoves,-checkmate, checkmate,  DEPTH, 1 if gamestate.IswTomove else -1)
+    # negamaxalphabetamove(gamestate, validmoves,-checkmate, checkmate,  DEPTH, 1 if gamestate.IswTomove else -1)
+    # _,nextmove =negamax_alpha_beta(gamestate, validmoves,DEPTH,-checkmate, checkmate,1 if gamestate.IswTomove else -1)
+    nextmove =iterativedeepeningmove(gamestate, validmoves,-checkmate, checkmate, 1 if gamestate.IswTomove else -1, limittime)
     end_time = time.time()
     print("用时", end_time - start_time, "算法调用次数", counter)
 
@@ -259,3 +262,49 @@ def negamaxalphabetamove(gamestate, validmoves,alpha,beta, depth, turn):
     if not best_move==None:
         gamestate.history.add(best_move,depth)
     return maxscore
+
+
+# 加了时间限制
+def negamax_alpha_beta(gamestate,validmoves, depth, alpha, beta, turn,starttime,limittime):
+    global counter
+    counter +=1
+    if depth == 0 :
+        return turn * scoreBoard(gamestate), None
+
+    max_score = -checkmate
+    best_move = None
+
+    for move in validmoves:
+        if time.time() - starttime > limittime:
+            break
+        gamestate.Piecemove(move)
+        nextmoves = gamestate.Getvalidmove()
+        score, _ = negamax_alpha_beta(gamestate,nextmoves, depth - 1, -beta, -alpha, -turn,starttime,limittime)
+
+        score = -score
+        gamestate.Pieceundo()
+
+        if score > max_score:
+            max_score = score
+            best_move = move
+
+        alpha = max(alpha, score)
+        if alpha >= beta:
+            break
+
+    return max_score, best_move
+
+# iterativedeepening
+def iterativedeepeningmove(gamestate,validmoves, alpha, beta, turn,time_limit):
+    start_time = time.time()
+    depth = 1
+    bestmoves=[]
+    while True:
+        _,bestmove = negamax_alpha_beta(gamestate,validmoves, depth, alpha, beta, turn,start_time,time_limit)
+        if bestmove!=None:
+            bestmoves.append(bestmove)
+        if time.time() - start_time > time_limit:
+            break
+        depth+=1
+        print(depth)
+    return bestmoves[-1]
