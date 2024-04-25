@@ -5,6 +5,7 @@
 """
 import random
 import time
+from AlphaZeroAI import AlphaZeroAI
 
 pieceScore = {"k":0,"q":10,"r":8,"b":5,"n":5,"p":1}
 # 评估函数：兵种位置得分
@@ -107,7 +108,6 @@ def scoreBoard(gamestate):
                 elif square[0] == "b":
                     score -= pieceScore[square[1]] +piecePositionScore * .1
     return score
-
 
 
 #随机
@@ -259,3 +259,28 @@ def negamaxalphabetamove(gamestate, validmoves,alpha,beta, depth, turn):
     if not best_move==None:
         gamestate.history.add(best_move,depth)
     return maxscore
+
+class ChessAI:
+    def __init__(self, game_state, use_alpha_zero=False, alpha_zero_model=None):
+        self.game_state = game_state
+        self.use_alpha_zero = use_alpha_zero
+        if use_alpha_zero:
+            self.ai = AlphaZeroAI(
+                board_size=8,
+                action_size=game_state.Getvalidmove().size,  # 假设每个动作的空间是有效的移动数量
+                model=alpha_zero_model,  # 如果有预训练模型，可以传递它
+                lr=0.001,
+                cuda=False
+            )
+
+    def get_move(self):
+        if self.use_alpha_zero:
+            # 使用AlphaZero算法选择走法
+            return self.ai.get_move(self.game_state, num_simulations=1000)
+        else:
+            # 使用原有AI算法选择走法
+            validmoves = self.game_state.Getvalidmove()
+            # 这里可以根据需要调用您原有的AI算法，例如findgreedymove或其他
+            return findgreedymove(self.game_state, validmoves)
+
+

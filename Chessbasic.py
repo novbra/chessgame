@@ -2,7 +2,8 @@
 存储当前游戏状态，日志，基本方法，规则
 """
 import structure
-
+import numpy as np
+import torch
 
 class GameState():
     def __init__(self):
@@ -32,6 +33,33 @@ class GameState():
                                              self.currentCastlingRight.wqs,self.currentCastlingRight.bqs)]
         self.history=structure.HistoryScore()
 
+    # 棋盘状态转换为神经网络可接受的格式
+    def get_state(self):
+            # 这里需要将棋盘状态转换为一个适合神经网络输入的格式
+            # 例如，使用一个8x8x2的numpy数组，其中2表示棋盘上的两种颜色（白和黑）
+            # 1表示白棋，-1表示黑棋，0表示空格
+            state = np.zeros((8, 8, 2), dtype=np.float32)
+            for row in range(8):
+                for col in range(8):
+                    piece = self.board[row][col]
+                    if piece != "--":
+                        color, piece_type = piece[0], piece[1]
+                        # 白棋为1，黑棋为-1
+                        state[row, col, 0 if color == "w" else 1] = 1
+                        # 可以根据piece_type给棋子赋予不同的值，或者只区分有无
+            return torch.tensor(state)
+
+    # 根据神经网络的输出选择走法
+    def get_move_from_policy(self, policy):
+            probabilities = policy.detach().numpy().flatten()
+            action = np.random.choice(len(probabilities), p=probabilities)
+            legal_moves = self.Getvalidmove()
+            action_move = legal_moves[action]  # 将动作索引映射到实际走法
+            return action_move
+
+    # 检查游戏是否结束
+    def is_game_over(self):
+        return self.checkMate or self.staleMate
 
 #移动棋子
     def Piecemove(self, move):
