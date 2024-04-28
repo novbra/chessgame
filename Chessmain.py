@@ -264,7 +264,7 @@ def  main_game_loop():
                             animate = True  # 标记需要动画显示走棋
                     else:
                         # 在线程之间传输数据
-                        moveFinderProcess = Process(target=AI.findminmaxmove, args=(gamestate, validmoves, returnQueue))
+                        moveFinderProcess = Process(target=AI.findminmaxmove, args=(gamestate, validmoves, returnQueue, AI.limittime))
                         moveFinderProcess.start()
                         # 调用findminmaxmove（gs.validMoves,returnQuene）
                     # AI思考结束
