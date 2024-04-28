@@ -1,13 +1,16 @@
 """
 主界面，处理输入以及显示当前游戏状态
 """
-import pygame
-import pygame_menu
-import Chessbasic, AI
 import sys
 # 线程
 from multiprocessing import Process, Queue
-from AlphaZeroAI import AlphaZeroAI
+
+import pygame
+import pygame_menu
+
+import AI
+import Chessbasic
+
 # 定义颜色
 WHITE = (255, 255, 255)
 GREY = (200, 200, 200)
@@ -270,25 +273,24 @@ def  main_game_loop():
                     # AI思考结束
                     AIThinking = False
 
-        if not moveFinderProcess.is_alive() and not use_alpha_zero:  # 如果是非AlphaZero AI且AI思考完成
+                if not moveFinderProcess.is_alive() and not use_alpha_zero:  # 如果是非AlphaZero AI且AI思考完成
+                    if not AIThinking:
+                        AIThinking = True
+                        print("thinking")
+                        returnQuene = Queue()
+                        # 在线程之间传输数据
+                        moveFinderProcess = Process(target=AI.findminmaxmove, args=(gamestate, validmoves, returnQuene,AI.limittime))
+                        moveFinderProcess.start()
+                        # 调用findminmaxmove（gs.validMoves,returnQuene）
+                    if not moveFinderProcess.is_alive():
 
-            if not AIThinking:
-                AIThinking = True
-                print("thinking")
-                returnQuene = Queue()
-                # 在线程之间传输数据
-                moveFinderProcess = Process(target=AI.findminmaxmove, args=(gamestate, validmoves, returnQuene,AI.limittime))
-                moveFinderProcess.start()
-                # 调用findminmaxmove（gs.validMoves,returnQuene）
-            if not moveFinderProcess.is_alive():
-
-                print("done thinking")
-                AImove = returnQueue.get()
-                if AImove is None:  # 如果没有有效的走法，则随机选择一个
-                    AImove = AI.findrandommove(validmoves)
-                gamestate.Piecemove(AImove)
-                movemade = True
-                animate = True
+                        print("done thinking")
+                        AImove = returnQueue.get()
+                        if AImove is None:  # 如果没有有效的走法，则随机选择一个
+                            AImove = AI.findrandommove(validmoves)
+                        gamestate.Piecemove(AImove)
+                        movemade = True
+                        animate = True
 
 
 
