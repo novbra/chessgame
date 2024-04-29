@@ -7,6 +7,7 @@ from multiprocessing import Process, Queue
 
 import pygame
 import pygame_menu
+from pygame_menu import Menu
 
 import AI
 import Chessbasic
@@ -95,6 +96,7 @@ def Loadimages():
 # 游戏初始化
 def  main_game_loop():
     global menu,running, active_menu,ai
+    pygame.init()
     active_menu = None  # 在这里初始化active_menu变量
     # 创建窗口
     screen = pygame.display.set_mode((WIDTH + MOVELOGWIDTH,HEIGHT ))
@@ -110,8 +112,8 @@ def  main_game_loop():
     movemade = False # 判断是否发生合法移动
     selected = ()  # 存储被选中的方块（row，col）
     clicked = []  # 存储用户点击的方块[(4,2),(5,3)]
-    player1 =True# 如果是人类在操作白棋，则其值为True
-    player2 =False# 如果是人类在操作黑棋，则其值为True
+    player1 =False# 如果是人类在操作白棋，则其值为True
+    player2 =True# 如果是人类在操作黑棋，则其值为True
     AIThinking = False
     moveFinderProcess = None
     moveUndone =False
@@ -127,16 +129,16 @@ def  main_game_loop():
                             theme=pygame_menu.themes.THEME_BLUE)
     menu.add.text_input('name :', default='MN Master')
     menu.add.button('play', start_the_game)
+
     menu.add.button('exit', pygame_menu.events.EXIT)
 
+    # 定义模型文件的路径
+    model_path = 'alpha_zero_model.ckpt'
     use_alpha_zero = False  # 用户选择是否使用AlphaZero算法
-
     if use_alpha_zero:
         # 实例化AlphaZero AI
-        ai = AI.ChessAI(gamestate, use_alpha_zero=use_alpha_zero)
-    else:
-        # 实例化原有AI
-        ai = AI.ChessAI(gamestate, use_alpha_zero=False)
+        ai = AI.AlphaZeroAI(gamestate, model_path)
+
     menu.mainloop(screen)
     # 游戏主循环
     while running:
@@ -229,70 +231,57 @@ def  main_game_loop():
 
 
 
-        # #AI 移动
-        # if not gameover and not humanturn and not moveUndone:
-        #     if not AIThinking:
-        #         AIThinking = True
-        #         print("thinking")
-        #         returnQuene = Queue()
-        #         # 在线程之间传输数据
-        #         # moveFinderProcess = Process(target=AI.choose_best_move, args=(gamestate, validmoves, returnQueue))
-        #         moveFinderProcess = Process(target=AI.findminmaxmove, args=(gamestate, validmoves, returnQuene))
-        #         moveFinderProcess.start()
-        #         # 调用findminmaxmove（gs.validMoves,returnQuene）
-        #     if not moveFinderProcess.is_alive():
-        #         print("done thinking")
-        #         AImove = returnQuene.get()
-        #         if AImove is None:
-        #             AImove = AI.findrandommove(validmoves)
-        #         gamestate.Piecemove(AImove)
-        #         movemade = True
-        #         animate = True
-        #         AIThinking = False
-
-        # AI移动
-        if not gameover and not humanturn and not moveUndone:
-
-                if not AIThinking:  # 确保AI不在思考中
-                    AIThinking = True  # AI开始思考
-                    print("thinking")
-                    returnQueue = Queue()
-                    # 根据是否使用AlphaZero算法选择不同的AI移动选择逻辑
-                    if use_alpha_zero:
-                        # 使用AlphaZero算法选择走法
-                        ai_move = ai.get_move()
-                        if ai_move is not None:
-                            gamestate.Piecemove(ai_move)  # 执行AI的走法
-                            movemade = True  # 标记为已走棋
-                            animate = True  # 标记需要动画显示走棋
-                    else:
-                        # 在线程之间传输数据
-                        moveFinderProcess = Process(target=AI.findminmaxmove, args=(gamestate, validmoves, returnQueue, AI.limittime))
-                        moveFinderProcess.start()
-                        # 调用findminmaxmove（gs.validMoves,returnQuene）
-                    # AI思考结束
-                    AIThinking = False
-
-                if not moveFinderProcess.is_alive() and not use_alpha_zero:  # 如果是非AlphaZero AI且AI思考完成
-                    if not AIThinking:
-                        AIThinking = True
-                        print("thinking")
-                        returnQuene = Queue()
-                        # 在线程之间传输数据
-                        moveFinderProcess = Process(target=AI.findminmaxmove, args=(gamestate, validmoves, returnQuene,AI.limittime))
-                        moveFinderProcess.start()
-                        # 调用findminmaxmove（gs.validMoves,returnQuene）
-                    if not moveFinderProcess.is_alive():
-
-                        print("done thinking")
-                        AImove = returnQueue.get()
-                        if AImove is None:  # 如果没有有效的走法，则随机选择一个
-                            AImove = AI.findrandommove(validmoves)
-                        gamestate.Piecemove(AImove)
-                        movemade = True
-                        animate = True
-
-
+        #AI 移动
+        if not gameover and not humanturn and not moveUndone and not use_alpha_zero:
+            if not AIThinking:
+                AIThinking = True
+                print("thinking")
+                returnQuene = Queue()
+                # if use_alpha_zero:
+                #     # moveFinderProcess = Process(target=AI.AlphaZeroAI,
+                #     #                             args=(gamestate, validmoves, returnQuene, AI.limittime))
+                #     # 使用AlphaZero算法选择走法
+                #     ai_move = ai.get_move()
+                #     if ai_move is not None:
+                #         gamestate.Piecemove(ai_move)  # 执行AI的走法
+                #         movemade = True  # 标记为已走棋
+                #         animate = True  # 标记需要动画显示走棋
+                # else:
+                    # 在线程之间传输数据
+                    # moveFinderProcess = Process(target=AI.choose_best_move, args=(gamestate, validmoves, returnQueue))
+                    # moveFinderProcess = Process(target=AI.findminmaxmove, args=(gamestate, validmoves, returnQuene,AI.limittime))
+                    # moveFinderProcess.start()
+                moveFinderProcess = Process(target=AI.findminmaxmove,
+                                            args=(gamestate, validmoves, returnQuene, AI.limittime))
+                moveFinderProcess.start()
+                    # 调用findminmaxmove（gs.validMoves,returnQuene）
+            if not moveFinderProcess.is_alive():
+                print("done thinking")
+                AImove = returnQuene.get()
+                if AImove is None:
+                    AImove = AI.findrandommove(validmoves)
+                gamestate.Piecemove(AImove)
+                movemade = True
+                animate = True
+                AIThinking = False
+        if not gameover and not humanturn and not moveUndone and use_alpha_zero:
+            if not ai.ai.mcts.is_fully_expanded():  # 如果 AI 需要走棋且 MCTS 树未完全展开
+                AIThinking = True
+                print("thinking")
+                returnQuene = Queue()
+                ai_move = ai.get_move()
+                if ai_move is not None:
+                    gamestate.Piecemove(ai_move)  # 执行 AI 的走法
+                    movemade = True  # 标记为已走棋
+                    animate = True  # 标记需要动画显示走棋
+            else:
+                print("done thinking")
+                # 如果 AI 已经计算完毕，直接从队列中获取走法
+                ai_move = ai.ai.mcts.get_move()
+                gamestate.Piecemove(ai_move)
+                movemade = True
+                animate = True
+                AIThinking = False
 
 
 

@@ -5,7 +5,11 @@
 """
 import random
 import time
-from AlphaZeroAI import AlphaZeroAI
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from MCTS import MCTS  # 假设您有一个MCTS的实现
+
 
 pieceScore = {"k":0,"q":10,"r":8,"b":5,"n":5,"p":1}
 # 评估函数：兵种位置得分
@@ -68,9 +72,9 @@ piecePositionScores = {"n": knightScore, 'q': queenScore, "b": bishopScore, "r":
 
 checkmate = 999
 stalemate = 0
-DEPTH    = 3 #控制递归版贪婪的递归深度
-max_depth = 5  # Set the desired maximum depth
-limittime =10
+DEPTH    = 2 #控制递归版贪婪的递归深度
+max_depth = 3  # Set the desired maximum depth
+limittime =0.1
 # 评分函数
 def scoreMaterial(board):
     score = 0
@@ -264,28 +268,22 @@ def negamaxalphabetamove(gamestate, validmoves,alpha,beta, depth, turn):
     return maxscore
 
 
-class ChessAI:
-    def __init__(self, game_state, use_alpha_zero=False, alpha_zero_model=None):
-        self.game_state = game_state
-        self.use_alpha_zero = use_alpha_zero
-        if use_alpha_zero:
-            self.ai = AlphaZeroAI(
-                board_size=8,
-                action_size=game_state.Getvalidmove().size,  # 假设每个动作的空间是有效的移动数量
-                model=alpha_zero_model,  # 如果有预训练模型，可以传递它
-                lr=0.001,
-                cuda=False
-            )
+# class ChessAI:
+#     def __init__(self, game_state, use_alpha_zero=False, alpha_zero_model=None):
+#         self.game_state = game_state
+#         self.use_alpha_zero = use_alpha_zero
+#         self.ai = AlphaZeroAI(
+#                 game=game_state,  # 确保这里传递的是棋盘游戏的实例
+#                 model=alpha_zero_model,  # 如果有预训练模型，可以传递它
+#                 lr=0.01,
+#                 cuda=False,
+#                 num_simulations=10
+#         )
+#
+#     def get_move(self):
+#         if self.use_alpha_zero:
+#             return self.ai.get_move()
 
-    def get_move(self):
-        if self.use_alpha_zero:
-            # 使用AlphaZero算法选择走法
-            return self.ai.get_move(self.game_state, num_simulations=1000)
-        else:
-            # 使用原有AI算法选择走法
-            validmoves = self.game_state.Getvalidmove()
-            # 这里可以根据需要调用您原有的AI算法，例如findgreedymove或其他
-            return findgreedymove(self.game_state, validmoves)
 
 
 
@@ -335,3 +333,115 @@ def iterativedeepeningmove(gamestate,validmoves, alpha, beta, turn,time_limit):
         print(depth)
     return bestmoves[-1]
 
+
+class AlphaZeroNetwork(nn.Module):
+    def __init__(self, board_size, action_size):
+        super(AlphaZeroNetwork, self).__init__()
+        self.conv = nn.Sequential(
+            nn.Conv2d(1, 64, kernel_size=3, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, kernel_size=3, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU()
+        )
+        self.fc = nn.Sequential(
+            nn.Linear(64 * board_size * board_size, 512),
+            nn.ReLU(),
+            nn.Linear(512, action_size + 1)  # +1 是为了价值输出
+        )
+    def forward(self, x):
+        x = self.conv(x)
+        x = x.view(x.size(0), -1)
+        x = self.fc(x)
+        policy, value = x[:, :-1], x[:, -1]
+        # 添加调试打印
+        print(f"Policy: {policy}")
+        print(f"Value: {value}")
+        return policy, value
+
+class AlphaZeroAI:
+    def __init__(self, game, model=None, lr=0.001, cuda=False, num_simulations=10):
+        # 确保 game 参数不是 None，并且有所需的方法
+        assert game is not None and hasattr(game, 'reset') and callable(
+            game.reset), "Game state must have a 'reset' method."
+        self.game_state = game
+        self.num_simulations = num_simulations
+        self.board_size = 8  # 棋盘大小
+        self.action_size = len(self.game_state.Getvalidmove())  # 动作空间大小
+        self.model = model if model else AlphaZeroNetwork(self.board_size, self.action_size)
+        self.optimizer = optim.Adam(self.model.parameters(), lr=lr)
+        self.device = torch.device("cuda" if cuda and torch.cuda.is_available() else "cpu")
+        self.model.to(self.device)
+        self.mcts = MCTS(self.game_state, num_simulations)  # 初始化 MCTS
+
+    def self_play(self):
+        # 重置 game_state 为新的游戏状态
+        game_state_copy = self.game_state.copy()
+        if game_state_copy is None:
+            raise ValueError("Game state copy is None. Copy method failed.")
+        while not game_state_copy.is_game_over():  # 确保副本有 is_game_over 方法
+            self.mcts = MCTS(game_state_copy, self.num_simulations)
+            move = self.get_move()  # 使用 MCTS 选择一个走法
+            print(move)
+            game_state_copy.Piecemove(move)  # 执行走法，更新副本状态
+        # 收集训练数据
+        training_data = game_state_copy.get_training_data()
+        print("selfplay2")
+        return training_data
+
+    def get_move(self):
+        #使用MCTS选择一个走法
+        return self.mcts.get_move()
+
+    def train(self, examples, epochs=1, batch_size=32):
+        #""“训练神经网络”""
+        dataset = ChessDataset(examples)  # 假设您有一个处理 examples 的 Dataset 类
+        dataloader = torch.utils.data.DataLoader(
+            dataset, batch_size=batch_size, shuffle=True
+        )
+
+        for epoch in range(epochs):
+            start_time = time.time()  # epoch 开始时间
+            total_loss = 0
+
+            for state_batch, policy_batch, value_batch in dataloader:
+                # 训练代码...
+                # 例如: 执行前向传播、计算损失、执行反向传播等
+                loss = self.optimizer.step()  # 假设这是您的损失值
+
+                total_loss += loss.item()
+
+            average_loss = total_loss / len(dataloader)
+            elapsed_time = time.time() - start_time  # 计算经过的时间
+            print(f"Epoch {epoch + 1}/{epochs} - Loss: {average_loss:.4f} - Time: {elapsed_time:.2f}s")
+
+
+        # dataloader = torch.utils.data.DataLoader(examples, batch_size=batch_size, shuffle=True)
+        # for epoch in range(epochs):
+        #     for state, policy_targets, value_targets in dataloader:
+        #         state = state.to(self.device)
+        #         policy_targets = policy_targets.to(self.device)
+        #         value_targets = value_targets.to(self.device)
+        #         policy, value = self.model(state)
+        #         policy_loss = nn.functional.mse_loss(policy, policy_targets)
+        #         value_loss = nn.functional.mse_loss(value.view(-1), value_targets.view(-1))
+        #         loss = policy_loss + value_loss
+        #         self.optimizer.zero_grad()
+        #         loss.backward()
+        #         self.optimizer.step()
+
+
+
+
+
+# 假设的 ChessDataset 类
+class ChessDataset(torch.utils.data.Dataset):
+    def __init__(self, examples):
+        self.examples = examples
+
+    def __len__(self):
+        return len(self.examples)
+
+    def __getitem__(self, idx):
+        return self.examples[idx]

@@ -22,10 +22,12 @@ class GameState():
                               'k': self.getKingMoves, 'b': self.getBishopMoves}
         self.IswTomove = True  #判断谁输谁赢
         self.movelog = []
+        self.count = 0
         self.whiteKingLocation = (7, 4)
         self.blackKingLocation = (0, 4)
         self.checkMate = False #被将的状态
         self.staleMate = False #僵局的状态
+        self.pawnhavemoved = False  # 和棋的一种情况，没有兵走动过
         self.enpassantPossible=()
         self.enpassantPossiblelog =[self.enpassantPossible]
         self.currentCastlingRight =CastleRights(True,True,True,True)
@@ -49,21 +51,107 @@ class GameState():
                         # 可以根据piece_type给棋子赋予不同的值，或者只区分有无
             return torch.tensor(state)
 
-    # 根据神经网络的输出选择走法
-    def get_move_from_policy(self, policy):
-            probabilities = policy.detach().numpy().flatten()
-            action = np.random.choice(len(probabilities), p=probabilities)
-            legal_moves = self.Getvalidmove()
-            action_move = legal_moves[action]  # 将动作索引映射到实际走法
-            return action_move
+    def copy(self):
+        # ""“创建棋盘状态的深度副本”""
+
+            copied_state = GameState()  # 创建一个新的 GameState 实例
+            copied_state.board = [row[:] for row in self.board]  # 深度复制棋盘
+            copied_state.IswTomove = self.IswTomove  # 复制谁的回合
+            copied_state.movelog = [move.copy() for move in self.movelog]  # 深度复制走法日志
+            copied_state.checkMate = self.checkMate  # 复制将死状态
+            copied_state.staleMate = self.staleMate  # 复制僵局状态
+            copied_state.enpassantPossible = self.enpassantPossible  # 复制en passant状态
+            copied_state.enpassantPossiblelog = self.enpassantPossiblelog[:]  # 复制en passant状态日志
+            copied_state.currentCastlingRight = self.currentCastlingRight  # 复制当前的王车易位权利
+            copied_state.castleRightsLog = self.castleRightsLog[:]  # 复制王车易位权利日志
+
+            # 深度复制历史评分
+            copied_state.history = structure.HistoryScore()
+            for i in range(len(self.history.history_score)):
+                for j in range(len(self.history.history_score[0])):
+                    copied_state.history.history_score[i][j] = self.history.history_score[i][j]
+
+            return copied_state
+
+    # # 根据神经网络的输出选择走法
+    # def get_move_from_policy(self, policy):
+    #         probabilities = policy.detach().numpy().flatten()
+    #         action = np.random.choice(len(probabilities), p=probabilities)
+    #         legal_moves = self.Getvalidmove()
+    #         action_move = legal_moves[action]  # 将动作索引映射到实际走法
+    #         return action_move
+
+    # def step(self, move):
+    #
+    #     # 执行走法
+    #     self.Piecemove(move)
+    #     # 检查游戏是否结束
+    #     if self.is_game_over():
+    #         print("Game over!")
+    #     else:
+    #         # 切换回合
+    #         self.IswTomove = not self.IswTomove
+    #     return self  # 确保返回当前的 game state
 
     # 检查游戏是否结束
     def is_game_over(self):
-        return self.checkMate or self.staleMate
+        # 检查是否将死
+        if self.inCheck() and len(self.Getvalidmove()) == 0:
+            self.checkMate = True
+            return True
+        # 检查是否僵局
+        if not self.inCheck() and len(self.Getvalidmove()) == 0:
+            self.staleMate = True
+            return True
+        return False
+
+    def reset(self):
+        # ""“重置游戏状态到一个新的游戏”""
+        # 初始化棋盘状态，通常是设置棋子到起始位置
+        self.board = self.get_initial_board()
+        self.moveFunctions = {'p': self.getPawnMoves, 'r': self.getRookMoves,
+                              'n': self.getKnightMoves, 'q': self.getQueenMoves,
+                              'k': self.getKingMoves, 'b': self.getBishopMoves}
+        # 重置其他游戏状态，例如轮到谁走棋、游戏是否结束等
+        self.whiteKingLocation = (7, 4)
+        self.blackKingLocation = (0, 4)
+        self.IswTomove = True
+        self.movelog = []
+        self.checkMate = False
+        self.staleMate = False
+        self.enpassantPossible = ()
+        self.enpassantPossiblelog = [self.enpassantPossible]
+        self.currentCastlingRight = CastleRights(True, True, True, True)
+        self.castleRightsLog = [CastleRights(self.currentCastlingRight.wks, self.currentCastlingRight.bks,
+                                             self.currentCastlingRight.wqs, self.currentCastlingRight.bqs)]
+        self.history = structure.HistoryScore()
+
+
+    def get_initial_board(self):
+        # 返回初始棋盘布局的静态方法”"""
+        # 这里应该是棋盘的初始布局，与 __init__ 方法中设置的相同
+        return [
+            ["br", "bn", "bb", "bq", "bk", "bb", "bn", "br"],
+            ["bp", "bp", "bp", "bp", "bp", "bp", "bp", "bp"],
+            ["--", "--", "--", "--", "--", "--", "--", "--"],
+            ["--", "--", "--", "--", "--", "--", "--", "--"],
+            ["--", "--", "--", "--", "--", "--", "--", "--"],
+            ["--", "--", "--", "--", "--", "--", "--", "--"],
+            ["wp", "wp", "wp", "wp", "wp", "wp", "wp", "wp"],
+            ["wr", "wn", "wb", "wq", "wk", "wb", "wn", "wr"]
+        ]
 
 #移动棋子
     def Piecemove(self, move):
         self.board[move.startrow][move.startcolumn] = "--"  #  把初始的方块设为空
+        if move.piecestart == 'bp' or move.piecestart == 'wp':
+            self.pawnhavemoved = True
+
+        if move.pieceend == '--':
+            self.count = self.count + 1
+        if move.pieceend != '--':
+            self.count = 0
+            self.pawnhavemoved = False
         self.board[move.endrow][move.endcolumn] = move.piecestart  #  把棋子转移到选定的方块上
         self.IswTomove = not self.IswTomove  #  回合轮换
         self.movelog.append(move)  #  在日志中增加移动记录
@@ -100,7 +188,10 @@ class GameState():
         self.updateCastleRights(move)
         self.castleRightsLog.append(CastleRights(self.currentCastlingRight.wks, self.currentCastlingRight.bks,
                                              self.currentCastlingRight.wqs, self.currentCastlingRight.bqs))
+        # 将走法添加到日志中
+        self.movelog.append(move)
 
+        return self
 
     #撤回一步
     def Pieceundo(self):
@@ -174,6 +265,7 @@ class GameState():
 
 
 # 获取合法移动集合
+
     def Getvalidmove(self):
         tempEnpassantPossible = self.enpassantPossible
         tempCastleRights=CastleRights(self.currentCastlingRight.wks,self.currentCastlingRight.bks,
@@ -196,6 +288,8 @@ class GameState():
                 self.checkMate = True
             else:
                 self.staleMate = True
+        if self.count >= 100 and self.pawnhavemoved == False:
+            self.staleMate = True
         self.enpassantPossible = tempEnpassantPossible
         self.currentCastlingRight=tempCastleRights
         return moves
@@ -353,6 +447,9 @@ class GameState():
             if not self.squarelUnderAttack(row, column - 1) and not self.squarelUnderAttack(row, column - 2):
                 moves.append(Move((row, column), (row, column - 2), self.board, isCastleMove=True))
 
+
+
+
 class CastleRights():
     def __init__(self,wks,bks,wqs,bqs):
         self.wks=wks
@@ -392,6 +489,17 @@ class Move():
         self.moveID = self.startrow*1000+self.startcolumn*100+self.endrow*10+self.endcolumn  # 给每次移动建立一个唯一ID
         # print(self.moveID)
         self.h_score=-9999
+        self.board = board
+
+    def copy(self):
+        # 创建并返回当前走法的深拷贝
+        return Move(
+            (self.startrow, self.startcolumn),
+            (self.endrow, self.endcolumn),
+            self.board,
+            isEnpassantMove=self.isEnpassantMove,
+            isCastleMove=self.isCastleMove
+        )
 
     # 重写equal方法
     def __eq__(self, other):
