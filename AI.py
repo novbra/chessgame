@@ -67,9 +67,9 @@ piecePositionScores = {"n": knightScore, 'q': queenScore, "b": bishopScore, "r":
 
 checkmate = 999
 stalemate = 0
-DEPTH    = 3 #控制递归版贪婪的递归深度
-max_depth = 5  # Set the desired maximum depth
-limittime =10
+DEPTH    = 1 #控制递归版贪婪的递归深度
+max_depth = 1  # Set the desired maximum depth
+limittime =0.01
 # 评分函数
 def scoreMaterial(board):
     score = 0

@@ -20,11 +20,13 @@ class GameState():
                               'n': self.getKnightMoves, 'q': self.getQueenMoves,
                               'k': self.getKingMoves, 'b': self.getBishopMoves}
         self.IswTomove = True  #判断谁输谁赢
+        self.count = 0
         self.movelog = []
         self.whiteKingLocation = (7, 4)
         self.blackKingLocation = (0, 4)
         self.checkMate = False #被将的状态
         self.staleMate = False #僵局的状态
+        self.pawnhavemoved = False # 和棋的一种情况，没有兵走动过
         self.enpassantPossible=()
         self.enpassantPossiblelog =[self.enpassantPossible]
         self.currentCastlingRight =CastleRights(True,True,True,True)
@@ -36,9 +38,20 @@ class GameState():
 #移动棋子
     def Piecemove(self, move):
         self.board[move.startrow][move.startcolumn] = "--"  #  把初始的方块设为空
+        if move.piecestart == 'bp' or move.piecestart == 'wp':
+            self.pawnhavemoved = True
+        print(move.pieceend)
+        if move.pieceend == '--':
+            self.count = self.count + 1
+        if move.pieceend != '--':
+            self.count = 0
+            self.pawnhavemoved = False
+        print(self.count)
+        print(self.pawnhavemoved)
         self.board[move.endrow][move.endcolumn] = move.piecestart  #  把棋子转移到选定的方块上
         self.IswTomove = not self.IswTomove  #  回合轮换
         self.movelog.append(move)  #  在日志中增加移动记录
+
         if move.piecestart =="wk":
             self.whiteKingLocation = (move.endrow, move.endcolumn)
         elif move.piecestart =="bk":
@@ -168,6 +181,8 @@ class GameState():
                 self.checkMate = True
             else:
                 self.staleMate = True
+        if self.count>=100 and self.pawnhavemoved==False:
+            self.staleMate = True
         self.enpassantPossible = tempEnpassantPossible
         self.currentCastlingRight=tempCastleRights
         return moves

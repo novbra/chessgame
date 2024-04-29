@@ -66,6 +66,9 @@ def start_the_game():
     animate = False
     # 设置游戏是否结束的标志
     gameover = False
+    #
+
+
     # 设置游戏运行状态为True，开始游戏循环
     running = True
     if menu is not None:  # 在调用之前检查menu是否已经被赋值
@@ -98,7 +101,7 @@ def  main_game_loop():
     movemade = False # 判断是否发生合法移动
     selected = ()  # 存储被选中的方块（row，col）
     clicked = []  # 存储用户点击的方块[(4,2),(5,3)]
-    player1 =True# 如果是人类在操作白棋，则其值为True
+    player1 =False# 如果是人类在操作白棋，则其值为True
     player2 =False# 如果是人类在操作黑棋，则其值为True
     AIThinking = False
     moveFinderProcess = None
@@ -211,23 +214,29 @@ def  main_game_loop():
 
         #AI 移动
         if not gameover and not humanturn and not moveUndone:
-            if not AIThinking:
-                AIThinking = True
-                print("thinking")
-                returnQuene = Queue()
-                # 在线程之间传输数据
-                moveFinderProcess = Process(target=AI.findminmaxmove, args=(gamestate, validmoves, returnQuene,AI.limittime))
-                moveFinderProcess.start()
-                # 调用findminmaxmove（gs.validMoves,returnQuene）
-            if not moveFinderProcess.is_alive():
-                print("done thinking")
-                AImove = returnQuene.get()
-                if AImove is None:
-                    AImove = AI.findrandommove(validmoves)
+            if player1 ==False and player2==False:
+                AImove = AI.findrandommove(validmoves)
                 gamestate.Piecemove(AImove)
                 movemade = True
-                animate = True
-                AIThinking = False
+                animate = False
+            else:
+                if not AIThinking:
+                    AIThinking = True
+                    print("thinking")
+                    returnQuene = Queue()
+                    # 在线程之间传输数据
+                    moveFinderProcess = Process(target=AI.findminmaxmove, args=(gamestate, validmoves, returnQuene,AI.limittime))
+                    moveFinderProcess.start()
+                    # 调用findminmaxmove（gs.validMoves,returnQuene）
+                if not moveFinderProcess.is_alive():
+                    print("done thinking")
+                    AImove = returnQuene.get()
+                    if AImove is None:
+                        AImove = AI.findrandommove(validmoves)
+                    gamestate.Piecemove(AImove)
+                    movemade = True
+                    animate = False
+                    AIThinking = False
 
 
 
