@@ -59,7 +59,7 @@ def start_the_game():
     # 初始化游戏状态
     gamestate = Chessbasic.GameState()
     # 获取所有有效的移动
-    validmoves = gamestate.Getvalidmove()
+    validmoves,trainvalidmoves = gamestate.Getvalidmove()
     # 设置移动是否已经发生的标志
     movemade = False
     # 设置是否应该显示动画的标志
@@ -97,11 +97,11 @@ def  main_game_loop():
 
     clock = pygame.time.Clock()
     gamestate = Chessbasic.GameState()  # 棋盘状态
-    validmoves = gamestate.Getvalidmove() # 合法的落子位置集合
+    validmoves,trainvalidmoves = gamestate.Getvalidmove() # 合法的落子位置集合
     movemade = False # 判断是否发生合法移动
     selected = ()  # 存储被选中的方块（row，col）
     clicked = []  # 存储用户点击的方块[(4,2),(5,3)]
-    player1 =False# 如果是人类在操作白棋，则其值为True
+    player1 =True# 如果是人类在操作白棋，则其值为True
     player2 =False# 如果是人类在操作黑棋，则其值为True
     AIThinking = False
     moveFinderProcess = None
@@ -111,6 +111,7 @@ def  main_game_loop():
     scroll_offset = 0  # 初始化滚动偏移量
     button1 = Button(WIDTH + 175, HEIGHT // 2 + 100, 100, 50, "Undo")
     button2 = Button(WIDTH + 175, HEIGHT // 2 + 200, 100, 50, "Reset")
+    print(trainvalidmoves)
     running = True
     # 显示菜单
     # 创建菜单
@@ -149,7 +150,7 @@ def  main_game_loop():
                                 gamestate.Pieceundo()
                         elif HEIGHT // 2 + 200 < mouse_y < HEIGHT // 2 + 250:
                             gamestate = Chessbasic.GameState()
-                            validmoves = gamestate.Getvalidmove()
+                            validmoves,trainvalidmoves = gamestate.Getvalidmove()
                             selected = ()
                             clicked = []
                             movemade = True
@@ -199,7 +200,7 @@ def  main_game_loop():
                         moveUndone = True
                 elif event.key == pygame.K_r:  # 按下r键，复原棋盘
                         gamestate = Chessbasic.GameState()
-                        validmoves = gamestate.Getvalidmove()
+                        validmoves,trainvalidmoves = gamestate.Getvalidmove()
                         selected = ()
                         clicked = []
                         movemade = True
@@ -246,7 +247,7 @@ def  main_game_loop():
         if movemade : #  如果移动发生了，重新获得可落子位置
             if animate:
                 animateMove(gamestate.movelog[-1], screen, gamestate.board,clock) #移动轨迹
-            validmoves = gamestate.Getvalidmove()
+            validmoves,trainvalidmoves = gamestate.Getvalidmove()
             movemade = False
             animate = True
             moveUndone = False

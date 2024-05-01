@@ -1,7 +1,40 @@
 """
 存储当前游戏状态，日志，基本方法，规则
 """
+import copy
+import random
+import time
+from collections import deque
+
 import structure
+import numpy as np
+
+string2array = {
+    'br': np.array([1, 0, 0, 0, 0, 0]),
+    'bn': np.array([0, 1, 0, 0, 0, 0]),
+    'bb': np.array([0, 0, 1, 0, 0, 0]),
+    'bq': np.array([0, 0, 0, 1, 0, 0]),
+    'bk': np.array([0, 0, 0, 0, 1, 0]),
+    'bp': np.array([0, 0, 0, 0, 0, 1]),
+    'wr': np.array([-1, 0, 0, 0, 0, 0]),
+    'wn': np.array([0, -1, 0, 0, 0, 0]),
+    'wb': np.array([0, 0, -1, 0, 0, 0]),
+    'wq': np.array([0, 0, 0, -1, 0, 0]),
+    'wk': np.array([0, 0, 0, 0, -1, 0]),
+    'wp': np.array([0, 0, 0, 0, 0, -1]),
+    '--': np.array([0, 0, 0, 0, 0, 0])
+}
+
+
+# 列表棋盘状态到数组棋盘状态
+def state_list2state_array(state_list):
+    _state_array = np.zeros([8, 8, 8])
+    for i in range(8):
+        for j in range(8):
+            _state_array[i][j] = string2array[state_list[i][j]]
+    return _state_array
+
+
 
 
 class GameState():
@@ -33,24 +66,113 @@ class GameState():
         self.castleRightsLog = [CastleRights(self.currentCastlingRight.wks,self.currentCastlingRight.bks,
                                              self.currentCastlingRight.wqs,self.currentCastlingRight.bqs)]
         self.history=structure.HistoryScore()
+        # deque来存储棋盘状态，长度为4
+        self.state_deque_init = deque(maxlen=4)
+        for _ in range(4):
+            self.state_deque_init.append(copy.deepcopy(self.board))
+        self.last_move="0000"
+        self.state_deque = copy.deepcopy(self.state_deque_init)
 
+    # 从当前玩家的视角返回棋盘状态，current_state_array:[8，8，8]CHW
+    def current_state(self):
+        _current_state = np.zeros([8,8,8])
+        # 使用8个平面来表示棋盘状态
+        # 0-5个平面表示棋子位置，1代表黑方棋子，-1代表白方棋子，队列最后一个盘面
+        # 第6个平面表示对手player最近一步的落子位置，走子之前的位置为-1，走子之后的位置为1，其余全部是0
+        # 第7个平面表示的是当前player是不是先手player，如果是先手player则整个平面全部为1，否则全部为0
+        if self.game_start:
+            _current_state[:6] = state_list2state_array(self.state_deque[-1]).transpose([2, 0, 1])  # [6, 8, 8]
+            #解构self.last move
+            move = self.last_move
+            start_position = int(move[0]), int(move[1])
+            end_position = int(move[2]).int(move[3])
+            _current_state[6][start_position[0]][start_position[1]] = -1
+            _current_state[6][end_position[0]][end_position[1]] = 1
+        # 指出当前是哪个玩家走子
+        if self.IswTomove:
+            _current_state[7][:,:]=1.0
+        return _current_state
 
-#移动棋子
+#用于训练对战的
+    def play(self):
+        winner = None
+        while True:
+            moves=[]
+            moves,_=self.Getvalidmove()
+            #此处暂时使用随机走法代替
+            if len(moves)!=0:
+                move=moves[random.randint(0,len(moves)-1)]
+                self.Piecemove(move)
+            if self.checkMate:
+                if self.IswTomove:
+                    winner=-1
+                    print("黑")
+                else:
+                    winner=1
+                    print("白")
+                return winner
+            if self.staleMate:
+                winner=0
+                print("和棋")
+                return winner
+
+#自我对弈，使用蒙特卡洛树搜索开始自我对弈，存储游戏状态（状态，蒙特卡洛落子概率，胜负手）三元组用于神经网络训练
+    def start_self_play(self,player,temp=1e-3):
+        states, mcts_probs, current_players = [], [], []
+        current_players_id=0
+        # 开始自我对弈
+        _count = 0
+        while True:
+            _count += 1
+            if _count % 20 == 0:
+                start_time = time.time()
+                move, move_probs = player.get_action(self.board,
+                                                     temp=temp,
+                                                     return_prob=1)
+                print('走一步要花: ', time.time() - start_time)
+            else:
+                move, move_probs = player.get_action(self.board,
+                                                     temp=temp,
+                                                     return_prob=1)
+            if self.IswTomove:
+                current_players_id=1
+            else:
+                current_players_id=2
+            # 保存自我对弈的数据
+            states.append(self.current_state())
+            mcts_probs.append(move_probs)
+            current_players.append(current_players_id)
+            # 执行一步落子
+            self.Piecemove(move)
+
+            if self.staleMate or self.checkMate:
+                if self.IswTomove:
+                    winner = -1
+                else:
+                    winner = 1
+                # 从每一个状态state对应的玩家的视角保存胜负信息
+                winner_z = np.zeros(len(current_players))
+                if winner != -1:
+                    winner_z[np.array(current_players) == winner] = 1.0
+                    winner_z[np.array(current_players) != winner] = -1.0
+                # 重置蒙特卡洛根节点
+                player.reset_player()
+                return winner, zip(states, mcts_probs, winner_z)
+
+    #移动棋子
     def Piecemove(self, move):
         self.board[move.startrow][move.startcolumn] = "--"  #  把初始的方块设为空
         if move.piecestart == 'bp' or move.piecestart == 'wp':
             self.pawnhavemoved = True
-        print(move.pieceend)
         if move.pieceend == '--':
             self.count = self.count + 1
         if move.pieceend != '--':
             self.count = 0
             self.pawnhavemoved = False
-        print(self.count)
-        print(self.pawnhavemoved)
         self.board[move.endrow][move.endcolumn] = move.piecestart  #  把棋子转移到选定的方块上
         self.IswTomove = not self.IswTomove  #  回合轮换
         self.movelog.append(move)  #  在日志中增加移动记录
+        self.last_move=str(move.startrow) +str(move.startcolumn)+str(move.endrow)+ str(move.endcolumn)
 
         if move.piecestart =="wk":
             self.whiteKingLocation = (move.endrow, move.endcolumn)
@@ -163,7 +285,7 @@ class GameState():
         tempEnpassantPossible = self.enpassantPossible
         tempCastleRights=CastleRights(self.currentCastlingRight.wks,self.currentCastlingRight.bks,
                                       self.currentCastlingRight.wqs,self.currentCastlingRight.bqs)#copy the current castling rights
-        moves = self.Get_all_possible_moves()#生成所有可能的步
+        moves,trainmoves = self.Get_all_possible_moves()#生成所有可能的步
         if self.IswTomove:
             self.getCastleMoves(self.whiteKingLocation[0],self.whiteKingLocation[1],moves)
         else:
@@ -185,7 +307,7 @@ class GameState():
             self.staleMate = True
         self.enpassantPossible = tempEnpassantPossible
         self.currentCastlingRight=tempCastleRights
-        return moves
+        return moves,trainmoves
     #是否被将
     def inCheck(self):
         if self.IswTomove:
@@ -196,7 +318,7 @@ class GameState():
 
     def squarelUnderAttack(self,r,c):
         self.IswTomove = not self.IswTomove#切换至敌方回合
-        oppMoves = self.Get_all_possible_moves()
+        oppMoves,trainmoves = self.Get_all_possible_moves()
         self.IswTomove = not self.IswTomove#换回来
         for move in oppMoves:
             if move.endrow == r and move.endcolumn == c:#此处会被吃
@@ -207,19 +329,23 @@ class GameState():
 # 获得当前所有可移动的位置，返回一个集合
     def Get_all_possible_moves(self):
         moves = []
+        trainmoves = []
         for row in range(8):
             for column in range(8):
                 color = self.board[row][column][0]  # 获取当前下棋方
                 if (color == "w" and self.IswTomove) or (color == "b" and not self.IswTomove):
                     piece = self.board[row][column][1]  # 获取棋子种类
                     self.moveFunctions[piece](row, column, moves)
+
                     #根据国际象棋类型调用适当的移动函数
                     # if piece == "p":  # 当棋子是兵时
                     #     self.Pawn(row, column, moves)
                     # # elif piece == "r":  # 当棋子是车时
                     # #     self.Rook(row, column, moves)
                     # # ...
-        return moves
+        for i in range(len(moves)):
+            trainmoves.append(str(moves[i].startrow) +str(moves[i].startcolumn)+str(moves[i].endrow)+ str(moves[i].endcolumn))
+        return moves, trainmoves
 
 
 
@@ -367,6 +493,7 @@ class Move():
         self.endcolumn = end[1]
         self.piecestart = board[self.startrow][self.startcolumn]    #  记录棋子起始位置,=moved
         self.pieceend = board[self.endrow][self.endcolumn]         #  记录棋子最终位置,=captured
+
         #PawnPromotion
         self.isPawnPromotion= (self.piecestart =='wp'and self.endrow ==0) or (self.piecestart=='bp'and self.endrow ==7)
         #Enpassant
@@ -393,3 +520,8 @@ class Move():
     def getRank(self, row, column):
         return self.colsToFiles[column] + self.rowsToRanks[row]
 
+
+
+# 测试
+gamestate = GameState()
+gamestate.play()

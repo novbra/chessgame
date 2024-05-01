@@ -124,7 +124,7 @@ def findgreedymove(gamestate,validmoves):
     random.shuffle(validmoves) #打乱可移动的位置集合
     for playermove in validmoves:  #遍历可移动的位置集合
         gamestate.Piecemove(playermove)
-        opponentsMoves = gamestate.Getvalidmove()# 获取对手的移动
+        opponentsMoves,opptrainvalidmoves = gamestate.Getvalidmove()# 获取对手的移动
         if gamestate.checkMate:
             opponentmaxscore = -checkmate
         elif gamestate.staleMate:
@@ -179,7 +179,7 @@ def minmaxmove(gamestate, validmoves, depth, wTomove):
         maxscore = -checkmate # 从最坏的情况开始
         for move in validmoves:
             gamestate.Piecemove(move)
-            nextmoves = gamestate.Getvalidmove()
+            nextmoves,nexttrainvalidmoves = gamestate.Getvalidmove()
             score  = minmaxmove(gamestate,nextmoves, depth-1,False)
             if score > maxscore:
                 maxscore = score
@@ -191,7 +191,7 @@ def minmaxmove(gamestate, validmoves, depth, wTomove):
         minscore = checkmate
         for move in validmoves:
             gamestate.Piecemove(move)
-            nextmoves = gamestate.Getvalidmove()
+            nextmoves,nexttrainvalidmoves = gamestate.Getvalidmove()
             score = minmaxmove(gamestate, nextmoves, depth - 1, True)
             if score < minscore:
                 minscore = score
@@ -212,7 +212,7 @@ def negamaxmove(gamestate, validmoves, depth, turn): #此方法为depth降序
     maxscore = -checkmate
     for move in validmoves:
         gamestate.Piecemove(move)
-        nextmoves = gamestate.Getvalidmove()
+        nextmoves,nexttrainvalidmoves = gamestate.Getvalidmove()
         score = -negamaxmove(gamestate, nextmoves,depth-1,-turn)
         if score> maxscore:
             maxscore = score
@@ -236,7 +236,7 @@ def negamaxalphabetamove(gamestate, validmoves,alpha,beta, depth, turn):
     best_move=None
     for move in validmoves:
         gamestate.Piecemove(move)
-        nextmoves = gamestate.Getvalidmove()
+        nextmoves,nexttrainvalidmoves = gamestate.Getvalidmove()
 
         if not len(nextmoves)==0:
             # 根据历史库中的价值表对Move的进行价值排序，价值越高排在前面，越优先遍历，让剪枝发生的更快
@@ -278,7 +278,7 @@ def negamax_alpha_beta(gamestate,validmoves, depth, alpha, beta, turn,starttime,
         if time.time() - starttime > limittime:
             break
         gamestate.Piecemove(move)
-        nextmoves = gamestate.Getvalidmove()
+        nextmoves,nexttrainvalidmoves = gamestate.Getvalidmove()
         score, _ = negamax_alpha_beta(gamestate,nextmoves, depth - 1, -beta, -alpha, -turn,starttime,limittime)
 
         score = -score
